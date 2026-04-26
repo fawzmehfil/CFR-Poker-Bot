@@ -1,11 +1,10 @@
 # CFR Poker Engine
 
-Tabular Counterfactual Regret Minimization for Leduc Poker with neural policy approximation, FastAPI/React gameplay, and high-performance Rust simulation/training.
-
 <div align="center">
   <img src="assets/cfr_poker_logo.png" alt="cfr_poker_logo" width="220" />
 </div>
 
+Tabular Counterfactual Regret Minimization for Leduc Poker with neural policy approximation, FastAPI/React gameplay, and high-performance Rust simulation/training.
 
 ## Overview
 
