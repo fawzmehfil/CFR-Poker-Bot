@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 from datetime import UTC, datetime
 import json
+import math
 from pathlib import Path
+import statistics
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -18,6 +20,30 @@ from leduc_cfr.eval.metrics import (
 )
 
 
+def summarize_seeded_matchups(profile: StrategyProfile, policy, hands: int, seed: int, seeds: int) -> dict:
+    runs = [head_to_head(profile, policy, hands=hands, seed=seed + offset) for offset in range(seeds)]
+    win_rates = [run["win_rate"] for run in runs]
+    avg_utilities = [run["avg_utility"] for run in runs]
+
+    def ci95(values: list[float]) -> list[float]:
+        if len(values) < 2:
+            return [values[0], values[0]]
+        mean = statistics.mean(values)
+        half_width = 1.96 * statistics.stdev(values) / math.sqrt(len(values))
+        return [mean - half_width, mean + half_width]
+
+    return {
+        "hands_per_seed": hands,
+        "seeds": seeds,
+        "hands_total": hands * seeds,
+        "win_rate": statistics.mean(win_rates),
+        "win_rate_ci95": ci95(win_rates),
+        "avg_utility": statistics.mean(avg_utilities),
+        "avg_utility_ci95": ci95(avg_utilities),
+        "runs": runs,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--strategy", default="data/cfr_strategy.json")
@@ -25,20 +51,26 @@ def main() -> None:
     parser.add_argument("--plot", default="data/eval.png")
     parser.add_argument("--hands", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--seeds", type=int, default=5)
     args = parser.parse_args()
 
     profile = StrategyProfile.load(args.strategy)
     p0_br, p1_br = full_information_best_response_values(profile)
-    cfr_vs_random = head_to_head(profile, random_policy, hands=args.hands, seed=args.seed)
-    cfr_vs_heuristic = head_to_head(profile, heuristic_policy, hands=args.hands, seed=args.seed + 1)
+    cfr_vs_random = summarize_seeded_matchups(profile, random_policy, args.hands, args.seed, args.seeds)
+    cfr_vs_heuristic = summarize_seeded_matchups(profile, heuristic_policy, args.hands, args.seed + args.seeds, args.seeds)
     metrics = {
         "timestamp": datetime.now(UTC).isoformat(),
+        "metric_labels": {
+            "expected_game_value_p0": "Exact expected value for player 0 when both seats use the saved average strategy.",
+            "nash_gap_upper_bound": "Full-information best-response diagnostic; upper-bound proxy, not exact exploitability.",
+            "head_to_head": "Monte Carlo simulation over seeded deals/actions with confidence intervals across seeds.",
+        },
         "expected_game_value_p0": expected_game_value(profile),
         "full_information_best_response_p0": p0_br,
         "full_information_best_response_p1": p1_br,
         "nash_gap_upper_bound": nash_gap_upper_bound(profile),
         "infosets": len(profile.strategies),
-        "hands_played": args.hands,
+        "hands_played": args.hands * args.seeds,
         "cfr_vs_random": cfr_vs_random,
         "cfr_vs_heuristic": cfr_vs_heuristic,
     }
