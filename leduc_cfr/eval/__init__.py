@@ -4,7 +4,9 @@ from .metrics import (
     head_to_head,
     heuristic_policy,
     nash_gap_upper_bound,
+    policy_head_to_head,
     random_policy,
+    strategy_profile_policy,
 )
 
 __all__ = [
@@ -13,5 +15,7 @@ __all__ = [
     "head_to_head",
     "heuristic_policy",
     "nash_gap_upper_bound",
+    "policy_head_to_head",
     "random_policy",
+    "strategy_profile_policy",
 ]

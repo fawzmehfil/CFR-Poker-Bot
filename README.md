@@ -43,8 +43,19 @@ leduc_cfr/
   eval/        Best-response/exploitability-style evaluation
 backend/       FastAPI API and game session manager
 frontend/      React Play vs Bot UI
+engine/        Optional standalone Rust Leduc simulator and benchmark
 scripts/       CLI entrypoints for training/eval
 tests/         Smoke and correctness tests
+```
+
+## Optional Rust Engine
+
+`engine/` is a standalone Rust Leduc simulator used for systems-depth benchmarking. Python remains the default runtime for CFR, evaluation, backend, and UI. There are no Python bindings yet.
+
+```bash
+cd engine
+cargo test
+cargo run --release --bin bench
 ```
 
 ## Useful Commands
@@ -55,4 +66,3 @@ python scripts/evaluate.py --strategy data/cfr_strategy.json
 uvicorn backend.main:app --reload
 npm run dev --prefix frontend
 ```
-

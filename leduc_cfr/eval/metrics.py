@@ -83,6 +83,13 @@ def heuristic_policy(state: LeducState, player: int, rng: random.Random) -> Acti
     return "c" if "c" in legal else legal[0]
 
 
+def strategy_profile_policy(profile: StrategyProfile) -> BotPolicy:
+    def policy(state: LeducState, player: int, rng: random.Random) -> Action:
+        return profile.sample_action(state.info_set_key(player), state.legal_actions(), rng)
+
+    return policy
+
+
 def play_hand(
     profile: StrategyProfile,
     opponent_policy: BotPolicy,
@@ -100,6 +107,22 @@ def play_hand(
     return state.utility(cfr_player)
 
 
+def play_policy_hand(
+    agent_policy: BotPolicy,
+    opponent_policy: BotPolicy,
+    agent_player: int,
+    rng: random.Random,
+) -> float:
+    state = LeducState(deal=random_deal(rng))
+    while not state.terminal:
+        if state.current_player == agent_player:
+            action = agent_policy(state, state.current_player, rng)
+        else:
+            action = opponent_policy(state, state.current_player, rng)
+        state = state.apply(action)
+    return state.utility(agent_player)
+
+
 def head_to_head(
     profile: StrategyProfile,
     opponent_policy: BotPolicy,
@@ -114,6 +137,37 @@ def head_to_head(
 
     for hand_index in range(hands):
         utility = play_hand(profile, opponent_policy, cfr_player=hand_index % 2, rng=rng)
+        utilities.append(utility)
+        if utility > 0:
+            wins += 1
+        elif utility < 0:
+            losses += 1
+        else:
+            draws += 1
+
+    return {
+        "hands": hands,
+        "win_rate": wins / hands if hands else 0.0,
+        "loss_rate": losses / hands if hands else 0.0,
+        "draw_rate": draws / hands if hands else 0.0,
+        "avg_utility": sum(utilities) / hands if hands else 0.0,
+    }
+
+
+def policy_head_to_head(
+    agent_policy: BotPolicy,
+    opponent_policy: BotPolicy,
+    hands: int = 1000,
+    seed: int = 7,
+) -> dict[str, float | int]:
+    rng = random.Random(seed)
+    utilities = []
+    wins = 0
+    losses = 0
+    draws = 0
+
+    for hand_index in range(hands):
+        utility = play_policy_hand(agent_policy, opponent_policy, agent_player=hand_index % 2, rng=rng)
         utilities.append(utility)
         if utility > 0:
             wins += 1

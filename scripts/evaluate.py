@@ -16,12 +16,39 @@ from leduc_cfr.eval.metrics import (
     head_to_head,
     heuristic_policy,
     nash_gap_upper_bound,
+    policy_head_to_head,
     random_policy,
+    strategy_profile_policy,
 )
+from leduc_cfr.neural.policy import NeuralPolicy
 
 
 def summarize_seeded_matchups(profile: StrategyProfile, policy, hands: int, seed: int, seeds: int) -> dict:
     runs = [head_to_head(profile, policy, hands=hands, seed=seed + offset) for offset in range(seeds)]
+    win_rates = [run["win_rate"] for run in runs]
+    avg_utilities = [run["avg_utility"] for run in runs]
+
+    def ci95(values: list[float]) -> list[float]:
+        if len(values) < 2:
+            return [values[0], values[0]]
+        mean = statistics.mean(values)
+        half_width = 1.96 * statistics.stdev(values) / math.sqrt(len(values))
+        return [mean - half_width, mean + half_width]
+
+    return {
+        "hands_per_seed": hands,
+        "seeds": seeds,
+        "hands_total": hands * seeds,
+        "win_rate": statistics.mean(win_rates),
+        "win_rate_ci95": ci95(win_rates),
+        "avg_utility": statistics.mean(avg_utilities),
+        "avg_utility_ci95": ci95(avg_utilities),
+        "runs": runs,
+    }
+
+
+def summarize_policy_matchups(agent_policy, opponent_policy, hands: int, seed: int, seeds: int) -> dict:
+    runs = [policy_head_to_head(agent_policy, opponent_policy, hands=hands, seed=seed + offset) for offset in range(seeds)]
     win_rates = [run["win_rate"] for run in runs]
     avg_utilities = [run["avg_utility"] for run in runs]
 
@@ -52,12 +79,33 @@ def main() -> None:
     parser.add_argument("--hands", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--seeds", type=int, default=5)
+    parser.add_argument("--policy", default="data/policy.pt")
     args = parser.parse_args()
 
     profile = StrategyProfile.load(args.strategy)
+    cfr_policy = strategy_profile_policy(profile)
     p0_br, p1_br = full_information_best_response_values(profile)
     cfr_vs_random = summarize_seeded_matchups(profile, random_policy, args.hands, args.seed, args.seeds)
     cfr_vs_heuristic = summarize_seeded_matchups(profile, heuristic_policy, args.hands, args.seed + args.seeds, args.seeds)
+    neural_metrics = None
+    if Path(args.policy).exists():
+        neural = NeuralPolicy.load(args.policy)
+
+        def neural_policy(state, player, rng):
+            return neural.sample_action(state, player, rng)
+
+        neural_metrics = {
+            "policy_path": args.policy,
+            "neural_vs_random": summarize_policy_matchups(
+                neural_policy, random_policy, args.hands, args.seed + 2 * args.seeds, args.seeds
+            ),
+            "neural_vs_heuristic": summarize_policy_matchups(
+                neural_policy, heuristic_policy, args.hands, args.seed + 3 * args.seeds, args.seeds
+            ),
+            "neural_vs_cfr": summarize_policy_matchups(
+                neural_policy, cfr_policy, args.hands, args.seed + 4 * args.seeds, args.seeds
+            ),
+        }
     metrics = {
         "timestamp": datetime.now(UTC).isoformat(),
         "metric_labels": {
@@ -74,6 +122,8 @@ def main() -> None:
         "cfr_vs_random": cfr_vs_random,
         "cfr_vs_heuristic": cfr_vs_heuristic,
     }
+    if neural_metrics:
+        metrics["neural"] = neural_metrics
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(metrics, indent=2))
     print(json.dumps(metrics, indent=2))
@@ -81,13 +131,16 @@ def main() -> None:
     if args.plot:
         from PIL import Image, ImageDraw, ImageFont
 
-        names = ["EV P0", "vs Random", "vs Heuristic", "Gap UB"]
-        values = [
-            metrics["expected_game_value_p0"],
-            cfr_vs_random["avg_utility"],
-            cfr_vs_heuristic["avg_utility"],
-            metrics["nash_gap_upper_bound"],
-        ]
+        names = ["EV P0", "CFR Random", "CFR Heur", "Gap UB"]
+        values = [metrics["expected_game_value_p0"], cfr_vs_random["avg_utility"], cfr_vs_heuristic["avg_utility"], metrics["nash_gap_upper_bound"]]
+        if neural_metrics is not None:
+            names = ["CFR Random", "CFR Heur", "NN Random", "NN Heur"]
+            values = [
+                cfr_vs_random["avg_utility"],
+                cfr_vs_heuristic["avg_utility"],
+                neural_metrics["neural_vs_random"]["avg_utility"],
+                neural_metrics["neural_vs_heuristic"]["avg_utility"],
+            ]
         width, height = 760, 420
         margin = 62
         image = Image.new("RGB", (width, height), "white")

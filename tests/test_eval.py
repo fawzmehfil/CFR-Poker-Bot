@@ -1,5 +1,5 @@
 from leduc_cfr.cfr.trainer import CFRTrainer
-from leduc_cfr.eval.metrics import head_to_head, heuristic_policy, random_policy
+from leduc_cfr.eval.metrics import head_to_head, heuristic_policy, policy_head_to_head, random_policy, strategy_profile_policy
 
 
 def test_head_to_head_reports_real_rates_and_utility():
@@ -26,3 +26,14 @@ def test_heuristic_head_to_head_is_seeded_and_reproducible():
     second = head_to_head(profile, heuristic_policy, hands=20, seed=5)
 
     assert first == second
+
+
+def test_policy_head_to_head_supports_profile_policy():
+    trainer = CFRTrainer(cfr_plus=True)
+    trainer.train(2)
+    profile = trainer.profile()
+
+    metrics = policy_head_to_head(strategy_profile_policy(profile), random_policy, hands=20, seed=3)
+
+    assert metrics["hands"] == 20
+    assert 0 <= metrics["win_rate"] <= 1

@@ -1,0 +1,14 @@
+[package]
+name = "leduc-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone Rust Leduc Poker simulator for CFR Poker Bot"
+
+[lib]
+name = "leduc_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bench"
+path = "src/bin/bench.rs"
+

@@ -1,5 +1,5 @@
 {
-  "latest_run_id": "run-20260426T031308Z",
+  "latest_run_id": "run-20260426T032159Z",
   "runs": {
     "run-20260426T031308Z": {
       "run_id": "run-20260426T031308Z",
@@ -88,6 +88,182 @@
           "runtime_sec": 40.390101583001524
         }
       ]
+    },
+    "run-20260426T031808Z": {
+      "run_id": "run-20260426T031808Z",
+      "timestamp": "2026-04-26T03:18:49.085660+00:00",
+      "iterations": 1000,
+      "cfr_plus": false,
+      "final_avg_utility_p0": -0.06758444044043128,
+      "infosets": 288,
+      "runtime_sec": 40.63819024999975,
+      "series": [
+        {
+          "iteration": 1,
+          "expected_game_value_p0": -0.10990583631775987,
+          "nash_gap_upper_bound": 3.8788448795546717,
+          "training_utility_p0": 0.2723669990254829,
+          "runtime_sec": 0.18563237499984098
+        },
+        {
+          "iteration": 100,
+          "expected_game_value_p0": -0.09169807596407359,
+          "nash_gap_upper_bound": 2.009476416883315,
+          "training_utility_p0": -0.17862041843358642,
+          "runtime_sec": 4.140284666998923
+        },
+        {
+          "iteration": 200,
+          "expected_game_value_p0": -0.08562937681956902,
+          "nash_gap_upper_bound": 1.9819108666056566,
+          "training_utility_p0": -0.16701591959961826,
+          "runtime_sec": 8.269481999999698
+        },
+        {
+          "iteration": 300,
+          "expected_game_value_p0": -0.08640045256119985,
+          "nash_gap_upper_bound": 2.048140321730207,
+          "training_utility_p0": 0.019928901123532607,
+          "runtime_sec": 12.305628209000133
+        },
+        {
+          "iteration": 400,
+          "expected_game_value_p0": -0.0872579804656525,
+          "nash_gap_upper_bound": 2.071147187418509,
+          "training_utility_p0": 0.013527390752108988,
+          "runtime_sec": 16.336602584000502
+        },
+        {
+          "iteration": 500,
+          "expected_game_value_p0": -0.0874601193765601,
+          "nash_gap_upper_bound": 2.023219534865553,
+          "training_utility_p0": 0.011781820560376325,
+          "runtime_sec": 20.368265917000826
+        },
+        {
+          "iteration": 600,
+          "expected_game_value_p0": -0.08754425464361566,
+          "nash_gap_upper_bound": 2.084209141410076,
+          "training_utility_p0": -0.09274547994754441,
+          "runtime_sec": 24.41370250000182
+        },
+        {
+          "iteration": 700,
+          "expected_game_value_p0": -0.08752476617050435,
+          "nash_gap_upper_bound": 2.093231660849782,
+          "training_utility_p0": -0.0813495099572337,
+          "runtime_sec": 28.42766354199921
+        },
+        {
+          "iteration": 800,
+          "expected_game_value_p0": -0.08756250642006755,
+          "nash_gap_upper_bound": 2.1039267618896558,
+          "training_utility_p0": -0.11867317176469276,
+          "runtime_sec": 32.46595458400043
+        },
+        {
+          "iteration": 900,
+          "expected_game_value_p0": -0.08759369117699817,
+          "nash_gap_upper_bound": 2.112238386398726,
+          "training_utility_p0": -0.1401210111871385,
+          "runtime_sec": 36.58096995899905
+        },
+        {
+          "iteration": 1000,
+          "expected_game_value_p0": -0.08750380705850856,
+          "nash_gap_upper_bound": 2.1162573465370578,
+          "training_utility_p0": -0.06758444044043128,
+          "runtime_sec": 40.63720433400158
+        }
+      ]
+    },
+    "run-20260426T032159Z": {
+      "run_id": "run-20260426T032159Z",
+      "timestamp": "2026-04-26T03:22:38.983536+00:00",
+      "iterations": 1000,
+      "cfr_plus": false,
+      "final_avg_utility_p0": -0.06758444044043128,
+      "infosets": 288,
+      "runtime_sec": 39.90986570899986,
+      "series": [
+        {
+          "iteration": 1,
+          "expected_game_value_p0": -0.10990583631775987,
+          "nash_gap_upper_bound": 3.8788448795546717,
+          "training_utility_p0": 0.2723669990254829,
+          "runtime_sec": 0.15586858399910852
+        },
+        {
+          "iteration": 100,
+          "expected_game_value_p0": -0.09169807596407359,
+          "nash_gap_upper_bound": 2.009476416883315,
+          "training_utility_p0": -0.17862041843358642,
+          "runtime_sec": 4.0896715839990065
+        },
+        {
+          "iteration": 200,
+          "expected_game_value_p0": -0.08562937681956902,
+          "nash_gap_upper_bound": 1.9819108666056566,
+          "training_utility_p0": -0.16701591959961826,
+          "runtime_sec": 8.077252084000065
+        },
+        {
+          "iteration": 300,
+          "expected_game_value_p0": -0.08640045256119985,
+          "nash_gap_upper_bound": 2.048140321730207,
+          "training_utility_p0": 0.019928901123532607,
+          "runtime_sec": 12.080749749999086
+        },
+        {
+          "iteration": 400,
+          "expected_game_value_p0": -0.0872579804656525,
+          "nash_gap_upper_bound": 2.071147187418509,
+          "training_utility_p0": 0.013527390752108988,
+          "runtime_sec": 16.068919041998015
+        },
+        {
+          "iteration": 500,
+          "expected_game_value_p0": -0.0874601193765601,
+          "nash_gap_upper_bound": 2.023219534865553,
+          "training_utility_p0": 0.011781820560376325,
+          "runtime_sec": 20.062766625000222
+        },
+        {
+          "iteration": 600,
+          "expected_game_value_p0": -0.08754425464361566,
+          "nash_gap_upper_bound": 2.084209141410076,
+          "training_utility_p0": -0.09274547994754441,
+          "runtime_sec": 24.059451417000673
+        },
+        {
+          "iteration": 700,
+          "expected_game_value_p0": -0.08752476617050435,
+          "nash_gap_upper_bound": 2.093231660849782,
+          "training_utility_p0": -0.0813495099572337,
+          "runtime_sec": 28.144994709000457
+        },
+        {
+          "iteration": 800,
+          "expected_game_value_p0": -0.08756250642006755,
+          "nash_gap_upper_bound": 2.1039267618896558,
+          "training_utility_p0": -0.11867317176469276,
+          "runtime_sec": 32.080025791998196
+        },
+        {
+          "iteration": 900,
+          "expected_game_value_p0": -0.08759369117699817,
+          "nash_gap_upper_bound": 2.112238386398726,
+          "training_utility_p0": -0.1401210111871385,
+          "runtime_sec": 35.99011350000001
+        },
+        {
+          "iteration": 1000,
+          "expected_game_value_p0": -0.08750380705850856,
+          "nash_gap_upper_bound": 2.1162573465370578,
+          "training_utility_p0": -0.06758444044043128,
+          "runtime_sec": 39.90893145899827
+        }
+      ]
     }
   },
   "comparison": [
@@ -98,6 +274,22 @@
       "final_expected_game_value_p0": -0.08750380705850856,
       "final_nash_gap_upper_bound": 2.1162573465370578,
       "runtime_sec": 40.3914404160023
+    },
+    {
+      "run_id": "run-20260426T031808Z",
+      "iterations": 1000,
+      "infosets": 288,
+      "final_expected_game_value_p0": -0.08750380705850856,
+      "final_nash_gap_upper_bound": 2.1162573465370578,
+      "runtime_sec": 40.63819024999975
+    },
+    {
+      "run_id": "run-20260426T032159Z",
+      "iterations": 1000,
+      "infosets": 288,
+      "final_expected_game_value_p0": -0.08750380705850856,
+      "final_nash_gap_upper_bound": 2.1162573465370578,
+      "runtime_sec": 39.90986570899986
     }
   ]
 }

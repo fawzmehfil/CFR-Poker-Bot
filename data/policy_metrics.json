@@ -1,0 +1,212 @@
+{
+  "timestamp": "2026-04-26T03:18:53.354385+00:00",
+  "strategy": "data/cfr_strategy.json",
+  "policy_path": "data/policy.pt",
+  "loss": 0.11288008093833923,
+  "kl_divergence": 0.11288008093833923,
+  "cross_entropy": 0.3724246621131897,
+  "examples": 288.0,
+  "epochs": 50.0,
+  "history": [
+    {
+      "epoch": 1.0,
+      "kl_divergence": 0.5621808290481567
+    },
+    {
+      "epoch": 2.0,
+      "kl_divergence": 0.5603567838668824
+    },
+    {
+      "epoch": 3.0,
+      "kl_divergence": 0.5611469507217407
+    },
+    {
+      "epoch": 4.0,
+      "kl_divergence": 0.5487269759178162
+    },
+    {
+      "epoch": 5.0,
+      "kl_divergence": 0.5330526232719421
+    },
+    {
+      "epoch": 6.0,
+      "kl_divergence": 0.5314958095550537
+    },
+    {
+      "epoch": 7.0,
+      "kl_divergence": 0.511093658208847
+    },
+    {
+      "epoch": 8.0,
+      "kl_divergence": 0.504685640335083
+    },
+    {
+      "epoch": 9.0,
+      "kl_divergence": 0.4812041580677032
+    },
+    {
+      "epoch": 10.0,
+      "kl_divergence": 0.4598456084728241
+    },
+    {
+      "epoch": 11.0,
+      "kl_divergence": 0.43233269453048706
+    },
+    {
+      "epoch": 12.0,
+      "kl_divergence": 0.40903348922729493
+    },
+    {
+      "epoch": 13.0,
+      "kl_divergence": 0.38454909324645997
+    },
+    {
+      "epoch": 14.0,
+      "kl_divergence": 0.3488829016685486
+    },
+    {
+      "epoch": 15.0,
+      "kl_divergence": 0.3183870494365692
+    },
+    {
+      "epoch": 16.0,
+      "kl_divergence": 0.2844105690717697
+    },
+    {
+      "epoch": 17.0,
+      "kl_divergence": 0.25848563611507414
+    },
+    {
+      "epoch": 18.0,
+      "kl_divergence": 0.23915281295776367
+    },
+    {
+      "epoch": 19.0,
+      "kl_divergence": 0.23020002543926238
+    },
+    {
+      "epoch": 20.0,
+      "kl_divergence": 0.21506035029888154
+    },
+    {
+      "epoch": 21.0,
+      "kl_divergence": 0.20067946314811708
+    },
+    {
+      "epoch": 22.0,
+      "kl_divergence": 0.19209433794021608
+    },
+    {
+      "epoch": 23.0,
+      "kl_divergence": 0.1845072865486145
+    },
+    {
+      "epoch": 24.0,
+      "kl_divergence": 0.17892132997512816
+    },
+    {
+      "epoch": 25.0,
+      "kl_divergence": 0.16307884454727173
+    },
+    {
+      "epoch": 26.0,
+      "kl_divergence": 0.1664613217115402
+    },
+    {
+      "epoch": 27.0,
+      "kl_divergence": 0.16103568971157073
+    },
+    {
+      "epoch": 28.0,
+      "kl_divergence": 0.15798251330852509
+    },
+    {
+      "epoch": 29.0,
+      "kl_divergence": 0.15207841694355012
+    },
+    {
+      "epoch": 30.0,
+      "kl_divergence": 0.15713665634393692
+    },
+    {
+      "epoch": 31.0,
+      "kl_divergence": 0.14254695326089858
+    },
+    {
+      "epoch": 32.0,
+      "kl_divergence": 0.13884363323450089
+    },
+    {
+      "epoch": 33.0,
+      "kl_divergence": 0.1348891466856003
+    },
+    {
+      "epoch": 34.0,
+      "kl_divergence": 0.1355740860104561
+    },
+    {
+      "epoch": 35.0,
+      "kl_divergence": 0.1433427780866623
+    },
+    {
+      "epoch": 36.0,
+      "kl_divergence": 0.13149684071540832
+    },
+    {
+      "epoch": 37.0,
+      "kl_divergence": 0.1362150177359581
+    },
+    {
+      "epoch": 38.0,
+      "kl_divergence": 0.1293214276432991
+    },
+    {
+      "epoch": 39.0,
+      "kl_divergence": 0.12646889239549636
+    },
+    {
+      "epoch": 40.0,
+      "kl_divergence": 0.1272487685084343
+    },
+    {
+      "epoch": 41.0,
+      "kl_divergence": 0.12288261502981186
+    },
+    {
+      "epoch": 42.0,
+      "kl_divergence": 0.12122361212968827
+    },
+    {
+      "epoch": 43.0,
+      "kl_divergence": 0.11623936146497726
+    },
+    {
+      "epoch": 44.0,
+      "kl_divergence": 0.11659785956144333
+    },
+    {
+      "epoch": 45.0,
+      "kl_divergence": 0.11832236051559449
+    },
+    {
+      "epoch": 46.0,
+      "kl_divergence": 0.11429242789745331
+    },
+    {
+      "epoch": 47.0,
+      "kl_divergence": 0.11225655674934387
+    },
+    {
+      "epoch": 48.0,
+      "kl_divergence": 0.10979993492364884
+    },
+    {
+      "epoch": 49.0,
+      "kl_divergence": 0.1042884685099125
+    },
+    {
+      "epoch": 50.0,
+      "kl_divergence": 0.11826928555965424
+    }
+  ]
+}
