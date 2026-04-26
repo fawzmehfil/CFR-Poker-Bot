@@ -5,11 +5,12 @@ from datetime import UTC, datetime
 import json
 from pathlib import Path
 import random
+import subprocess
 import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from leduc_cfr.cfr.trainer import CFRTrainer
+from leduc_cfr.cfr.trainer import CFRTrainer, StrategyProfile
 from leduc_cfr.eval.metrics import expected_game_value, head_to_head, heuristic_policy, nash_gap_upper_bound, random_policy
 
 
@@ -63,6 +64,148 @@ def plot_training_curves(points: list[dict], path: str) -> None:
     image.save(path)
 
 
+def _parse_rust_training_output(stdout: str) -> dict[str, str]:
+    parsed = {}
+    for line in stdout.splitlines():
+        if ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        parsed[key.strip()] = value.strip()
+    return parsed
+
+
+def run_rust_cfr(args: argparse.Namespace, settings: dict) -> None:
+    output_dir = Path(args.output_dir)
+    out_path = args.out or str(output_dir / "cfr_strategy.json")
+    metrics_path = args.metrics or str(output_dir / "cfr_metrics.json")
+    plot_path = args.plot if args.plot is not None else str(output_dir / "training_curves.png")
+    iterations = settings["iterations"]
+    eval_interval = settings["eval_interval"]
+    selection_hands = settings["selection_hands"]
+    cfr_plus = args.cfr_plus or args.algo == "cfr-plus"
+    run_id = args.run_id or datetime.now(UTC).strftime("run-%Y%m%dT%H%M%SZ")
+    engine_dir = Path(__file__).resolve().parents[1] / "engine"
+
+    command = [
+        "cargo",
+        "run",
+        "--release",
+        "--bin",
+        "train_cfr",
+        "--",
+        "--iterations",
+        str(iterations),
+        "--seed",
+        str(args.seed),
+        "--out",
+        str(Path(out_path).resolve()),
+        "--eval-interval",
+        str(eval_interval),
+        "--selection",
+        args.selection,
+        "--selection-hands",
+        str(selection_hands),
+    ]
+    if cfr_plus:
+        command.append("--cfr-plus")
+
+    start = time.perf_counter()
+    result = subprocess.run(command, cwd=engine_dir, check=True, text=True, capture_output=True)
+    print(result.stdout, end="")
+    elapsed = time.perf_counter() - start
+    rust_output = _parse_rust_training_output(result.stdout)
+
+    profile = StrategyProfile.load(out_path)
+    gap = nash_gap_upper_bound(profile)
+    random_avg_utility = head_to_head(profile, random_policy, hands=selection_hands, seed=args.seed)["avg_utility"]
+    heuristic_avg_utility = head_to_head(profile, heuristic_policy, hands=selection_hands, seed=args.seed + 5)[
+        "avg_utility"
+    ]
+    ev = expected_game_value(profile)
+    root_traversals = iterations * 120
+    rust_tps = float(rust_output.get("root_traversals_per_sec", "0") or 0.0)
+    selected_iteration = int(rust_output.get("selected_iteration", iterations))
+    selected_gap = float(rust_output.get("selected_nash_gap_upper_bound", gap))
+    selected_avg_utility = float(rust_output.get("selected_avg_utility_p0", "0") or 0.0)
+    runtime_sec = float(rust_output.get("runtime_sec", elapsed))
+    point = {
+        "iteration": selected_iteration,
+        "expected_game_value_p0": ev,
+        "nash_gap_upper_bound": gap,
+        "selection_heuristic_avg_utility": heuristic_avg_utility,
+        "selection_random_avg_utility": random_avg_utility,
+        "training_utility_p0": selected_avg_utility,
+        "avg_utility_p0": selected_avg_utility,
+        "runtime_sec": runtime_sec,
+        "root_traversals": root_traversals,
+        "root_traversals_per_sec": rust_tps,
+        "infosets": len(profile.strategies),
+        "selected_best": True,
+    }
+
+    final_metrics = {
+        "run_id": run_id,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "preset": args.preset,
+        "algorithm": "cfr-plus" if cfr_plus else "cfr",
+        "engine_requested": args.engine,
+        "engine_used": "rust",
+        "iterations": iterations,
+        "seed": args.seed,
+        "eval_interval": eval_interval,
+        "selection_mode": args.selection,
+        "selection_weights": {
+            "gap": args.w_gap,
+            "random": args.w_random,
+            "heuristic": args.w_heuristic,
+        },
+        "gap_tolerance": settings["gap_tolerance"],
+        "selection_hands": selection_hands,
+        "cfr_plus": cfr_plus,
+        "final_avg_utility_p0": float(rust_output.get("final_avg_utility_p0", "0") or 0.0),
+        "best_observed_nash_gap_upper_bound": selected_gap,
+        "selected_iteration": selected_iteration,
+        "selected_gap": gap,
+        "selected_vs_random_avg_utility": random_avg_utility,
+        "selected_vs_heuristic_avg_utility": heuristic_avg_utility,
+        "selected_checkpoint_iteration": selected_iteration,
+        "selected_checkpoint_nash_gap_upper_bound": gap,
+        "selected_checkpoint_heuristic_avg_utility": heuristic_avg_utility,
+        "selected_checkpoint_random_avg_utility": random_avg_utility,
+        "selected_balanced_scores": None,
+        "infosets": len(profile.strategies),
+        "runtime_sec": runtime_sec,
+        "root_traversals": root_traversals,
+        "root_traversals_per_sec": rust_tps,
+        "series": [point],
+    }
+
+    Path(metrics_path).parent.mkdir(parents=True, exist_ok=True)
+    existing = {}
+    if Path(metrics_path).exists():
+        existing = json.loads(Path(metrics_path).read_text())
+    runs = existing.get("runs", {})
+    runs[run_id] = final_metrics
+    comparison = [
+        {
+            "run_id": key,
+            "algorithm": value.get("algorithm", "cfr-plus" if value.get("cfr_plus") else "cfr"),
+            "iterations": value["iterations"],
+            "infosets": value["infosets"],
+            "final_expected_game_value_p0": value["series"][-1]["expected_game_value_p0"],
+            "final_nash_gap_upper_bound": value["series"][-1]["nash_gap_upper_bound"],
+            "runtime_sec": value["runtime_sec"],
+            "root_traversals_per_sec": value.get("root_traversals_per_sec", 0.0),
+        }
+        for key, value in sorted(runs.items())
+    ]
+    Path(metrics_path).write_text(json.dumps({"latest_run_id": run_id, "runs": runs, "comparison": comparison}, indent=2))
+    if plot_path:
+        plot_training_curves([point], plot_path)
+    print(f"saved {len(profile.strategies)} infosets to {out_path}")
+    print(f"saved training metrics to {metrics_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--preset", choices=["quick", "default", "strong"], default="default")
@@ -83,6 +226,7 @@ def main() -> None:
     parser.add_argument("--w-heuristic", type=float, default=0.35)
     parser.add_argument("--gap-tolerance", type=float, default=None)
     parser.add_argument("--selection-hands", type=int, default=None)
+    parser.add_argument("--engine", choices=["python", "rust", "auto"], default="auto")
     args = parser.parse_args()
 
     preset_defaults = {
@@ -95,6 +239,22 @@ def main() -> None:
     track_every = args.track_every or preset["track_every"]
     gap_tolerance = preset["gap_tolerance"] if args.gap_tolerance is None else args.gap_tolerance
     selection_hands = preset["selection_hands"] if args.selection_hands is None else args.selection_hands
+    settings = {
+        "iterations": iterations,
+        "track_every": track_every,
+        "eval_interval": args.eval_interval or track_every,
+        "gap_tolerance": preset["gap_tolerance"] if args.gap_tolerance is None else args.gap_tolerance,
+        "selection_hands": selection_hands,
+    }
+    if args.engine == "rust" or (args.engine == "auto" and args.selection == "best_gap"):
+        try:
+            run_rust_cfr(args, settings)
+            return
+        except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+            if args.engine == "rust":
+                raise
+            print(f"Rust CFR unavailable; falling back to Python CFR ({exc})")
+
     random.seed(args.seed)
     output_dir = Path(args.output_dir)
     out_path = args.out or str(output_dir / "cfr_strategy.json")
@@ -103,7 +263,8 @@ def main() -> None:
     eval_interval = args.eval_interval or track_every
     cfr_plus = args.cfr_plus or args.algo == "cfr-plus"
     run_id = args.run_id or datetime.now(UTC).strftime("run-%Y%m%dT%H%M%SZ")
-    trainer = CFRTrainer(cfr_plus=cfr_plus)
+    trainer_engine = "python" if args.engine == "auto" else args.engine
+    trainer = CFRTrainer(cfr_plus=cfr_plus, engine=trainer_engine)
     utilities = []
     points = []
     best_gap = float("inf")
@@ -234,6 +395,8 @@ def main() -> None:
         "timestamp": datetime.now(UTC).isoformat(),
         "preset": args.preset,
         "algorithm": "cfr-plus" if cfr_plus else "cfr",
+        "engine_requested": args.engine,
+        "engine_used": trainer.engine,
         "iterations": iterations,
         "seed": args.seed,
         "eval_interval": eval_interval,

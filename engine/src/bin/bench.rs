@@ -135,7 +135,10 @@ impl FastState {
             }
             CHECK => {
                 let hlen = self.history_len[round] as usize;
-                if hlen >= 2 && self.history[round][hlen - 2] == CHECK && self.history[round][hlen - 1] == CHECK {
+                if hlen >= 2
+                    && self.history[round][hlen - 2] == CHECK
+                    && self.history[round][hlen - 1] == CHECK
+                {
                     self.after_closed_betting();
                 } else {
                     self.current = 1 - self.current;
@@ -170,7 +173,11 @@ impl FastState {
         if p0 == p1 {
             return 2;
         }
-        if p0 > p1 { 0 } else { 1 }
+        if p0 > p1 {
+            0
+        } else {
+            1
+        }
     }
 
     #[inline]
@@ -240,7 +247,10 @@ fn action_token(action: u8) -> &'static str {
 fn action_list(state: &FastState) -> String {
     let mut legal = [0; 3];
     let n = state.legal_actions(&mut legal);
-    (0..n).map(|idx| action_token(legal[idx])).collect::<Vec<_>>().join(",")
+    (0..n)
+        .map(|idx| action_token(legal[idx]))
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn rust_trace() -> String {
@@ -252,7 +262,11 @@ fn rust_trace() -> String {
     showdown.apply(CHECK);
     showdown.apply(CHECK);
     showdown.apply(CHECK);
-    format!("fold:{}|showdown:{}", fold.trace_summary(), showdown.trace_summary())
+    format!(
+        "fold:{}|showdown:{}",
+        fold.trace_summary(),
+        showdown.trace_summary()
+    )
 }
 
 fn python_trace_and_speed(py_hands: usize) -> (bool, String, f64) {
@@ -296,7 +310,11 @@ print(json.dumps({{"trace": trace, "hands_per_sec": {py_hands} / elapsed, "avg_u
         return (false, "python_unavailable".to_string(), 0.0);
     };
     if !output.status.success() {
-        return (false, String::from_utf8_lossy(&output.stderr).to_string(), 0.0);
+        return (
+            false,
+            String::from_utf8_lossy(&output.stderr).to_string(),
+            0.0,
+        );
     }
     let text = String::from_utf8_lossy(&output.stdout);
     let trace = extract_json_string(&text, "trace").unwrap_or_default();
@@ -427,7 +445,11 @@ fn main() {
         state_transitions_per_sec = state_transitions_per_sec,
         python_hands_per_sec = python_hands_per_sec,
         speedup = speedup,
-        correctness = if correctness_passed { "passed" } else { "failed" },
+        correctness = if correctness_passed {
+            "passed"
+        } else {
+            "failed"
+        },
     );
     fs::write("../data/performance_summary.md", markdown).expect("write performance summary");
 

@@ -4,9 +4,9 @@ from dataclasses import dataclass, field
 import itertools
 import json
 import random
-from functools import lru_cache
 from pathlib import Path
 
+from leduc_cfr.cfr.engine import EngineOps, engine_ops
 from leduc_cfr.poker.leduc import CARDS, Action, LeducState
 
 
@@ -70,18 +70,20 @@ class StrategyProfile:
 
 
 class CFRTrainer:
-    def __init__(self, cfr_plus: bool = False) -> None:
+    def __init__(self, cfr_plus: bool = False, engine: str = "python") -> None:
         self.info_sets: dict[str, InfoSet] = {}
         self.cfr_plus = cfr_plus
         self.iterations = 0
         self.deals = list(itertools.permutations(CARDS, 3))
+        self.ops: EngineOps = engine_ops(engine)
+        self.engine = self.ops.name
 
     def train(self, iterations: int) -> list[float]:
         utilities: list[float] = []
         for _ in range(iterations):
             total = 0.0
             for deal in self.deals:
-                total += self._cfr(LeducState(deal=deal), reach0=1.0, reach1=1.0)
+                total += self._cfr(self.ops.initial_state(deal), reach0=1.0, reach1=1.0)
             self.iterations += 1
             utilities.append(total / len(self.deals))
         return utilities
@@ -90,12 +92,12 @@ class CFRTrainer:
         return StrategyProfile({key: info.average_strategy() for key, info in sorted(self.info_sets.items())})
 
     def _cfr(self, state: LeducState, reach0: float, reach1: float) -> float:
-        if state.terminal:
-            return state.utility(0)
+        if self.ops.is_terminal(state):
+            return self.ops.utility(state, 0)
 
-        player = state.current_player
-        legal = _legal_actions(state)
-        key = _info_set_key(state, player)
+        player = self.ops.current_player(state)
+        legal = self.ops.legal_actions(state)
+        key = self.ops.info_set_key(state, player)
         info = self.info_sets.setdefault(key, InfoSet())
         strategy = info.strategy(legal)
 
@@ -106,7 +108,7 @@ class CFRTrainer:
         child_values: dict[Action, float] = {}
         node_value = 0.0
         for action in legal:
-            next_state = _apply_action(state, action)
+            next_state = self.ops.apply_action(state, action)
             if player == 0:
                 child_values[action] = self._cfr(next_state, reach0 * strategy[action], reach1)
             else:
@@ -124,18 +126,3 @@ class CFRTrainer:
             info.regret_sum[action] = max(0.0, updated) if self.cfr_plus else updated
 
         return node_value
-
-
-@lru_cache(maxsize=None)
-def _legal_actions(state: LeducState) -> tuple[Action, ...]:
-    return state.legal_actions()
-
-
-@lru_cache(maxsize=None)
-def _info_set_key(state: LeducState, player: int) -> str:
-    return state.info_set_key(player)
-
-
-@lru_cache(maxsize=None)
-def _apply_action(state: LeducState, action: Action) -> LeducState:
-    return state.apply(action)

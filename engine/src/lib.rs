@@ -141,7 +141,11 @@ impl LeducState {
 
     pub fn apply(&self, action: Action) -> Result<Self, String> {
         if !self.legal_actions().contains(&action) {
-            return Err(format!("illegal action {:?}; legal={:?}", action, self.legal_actions()));
+            return Err(format!(
+                "illegal action {:?}; legal={:?}",
+                action,
+                self.legal_actions()
+            ));
         }
 
         let mut next = self.clone();
@@ -220,7 +224,11 @@ impl LeducState {
         if p0.rank.value() == p1.rank.value() {
             return None;
         }
-        Some(if p0.rank.value() > p1.rank.value() { 0 } else { 1 })
+        Some(if p0.rank.value() > p1.rank.value() {
+            0
+        } else {
+            1
+        })
     }
 
     pub fn info_set_key(&self, player: usize) -> String {
@@ -232,7 +240,10 @@ impl LeducState {
         };
         let h0 = history_string(&self.history[0]);
         let h1 = history_string(&self.history[1]);
-        format!("p{player}|{private}|{public}|r{}|{h0}/{h1}", self.round_index)
+        format!(
+            "p{player}|{private}|{public}|r{}|{h0}/{h1}",
+            self.round_index
+        )
     }
 }
 
@@ -262,6 +273,291 @@ fn validate_deal(deal: &[Card; 3]) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+const FFI_CHECK: u8 = 0;
+const FFI_BET: u8 = 1;
+const FFI_CALL: u8 = 2;
+const FFI_RAISE: u8 = 3;
+const FFI_FOLD: u8 = 4;
+const FFI_EMPTY: u8 = 7;
+
+#[derive(Clone, Copy)]
+struct PackedState {
+    deal: [u8; 3],
+    round: u8,
+    current: u8,
+    contributions: [u8; 2],
+    bets: [u8; 2],
+    raises: u8,
+    history: [[u8; 4]; 2],
+    history_len: [u8; 2],
+    terminal: bool,
+    folded: u8,
+}
+
+impl PackedState {
+    fn new(c0: u8, c1: u8, c2: u8) -> Self {
+        Self {
+            deal: [c0, c1, c2],
+            round: 0,
+            current: 0,
+            contributions: [1, 1],
+            bets: [0, 0],
+            raises: 0,
+            history: [[FFI_EMPTY; 4]; 2],
+            history_len: [0, 0],
+            terminal: false,
+            folded: 2,
+        }
+    }
+
+    fn rank(card: u8) -> u8 {
+        card / 2
+    }
+
+    fn pot(&self) -> u8 {
+        self.contributions[0] + self.contributions[1]
+    }
+
+    fn to_call(&self, player: usize) -> u8 {
+        self.bets[0].max(self.bets[1]) - self.bets[player]
+    }
+
+    fn legal_actions(&self) -> [u8; 4] {
+        if self.terminal {
+            return [0, 0, 0, 0];
+        }
+        if self.to_call(self.current as usize) > 0 {
+            if self.raises < MAX_RAISES {
+                [3, FFI_FOLD, FFI_CALL, FFI_RAISE]
+            } else {
+                [2, FFI_FOLD, FFI_CALL, 0]
+            }
+        } else if self.raises < MAX_RAISES {
+            [2, FFI_CHECK, FFI_BET, 0]
+        } else {
+            [1, FFI_CHECK, 0, 0]
+        }
+    }
+
+    fn apply(mut self, action: u8) -> Self {
+        let round = self.round as usize;
+        let player = self.current as usize;
+        let len = self.history_len[round] as usize;
+        self.history[round][len] = action;
+        self.history_len[round] += 1;
+
+        match action {
+            FFI_FOLD => {
+                self.terminal = true;
+                self.folded = self.current;
+            }
+            FFI_CALL => {
+                let call = self.to_call(player);
+                self.contributions[player] += call;
+                self.bets[player] += call;
+                self = self.after_closed_betting();
+            }
+            FFI_BET | FFI_RAISE => {
+                let amount = self.to_call(player) + BET_SIZES[round] as u8;
+                self.contributions[player] += amount;
+                self.bets[player] += amount;
+                self.raises += 1;
+                self.current = 1 - self.current;
+            }
+            FFI_CHECK => {
+                let hlen = self.history_len[round] as usize;
+                if hlen >= 2
+                    && self.history[round][hlen - 2] == FFI_CHECK
+                    && self.history[round][hlen - 1] == FFI_CHECK
+                {
+                    self = self.after_closed_betting();
+                } else {
+                    self.current = 1 - self.current;
+                }
+            }
+            _ => {}
+        }
+        self
+    }
+
+    fn after_closed_betting(mut self) -> Self {
+        if self.round == 0 {
+            self.round = 1;
+            self.current = 0;
+            self.bets = [0, 0];
+            self.raises = 0;
+        } else {
+            self.terminal = true;
+        }
+        self
+    }
+
+    fn showdown_winner(&self) -> u8 {
+        let p0 = Self::rank(self.deal[0]);
+        let p1 = Self::rank(self.deal[1]);
+        let public = Self::rank(self.deal[2]);
+        let pair0 = p0 == public;
+        let pair1 = p1 == public;
+        if pair0 != pair1 {
+            return if pair0 { 0 } else { 1 };
+        }
+        if p0 == p1 {
+            return 2;
+        }
+        if p0 > p1 {
+            0
+        } else {
+            1
+        }
+    }
+
+    fn utility(&self, player: usize) -> f64 {
+        let winner = if self.folded != 2 {
+            1 - self.folded
+        } else {
+            self.showdown_winner()
+        };
+        if winner == 2 {
+            self.pot() as f64 / 2.0 - self.contributions[player] as f64
+        } else if winner as usize == player {
+            (self.pot() - self.contributions[player]) as f64
+        } else {
+            -(self.contributions[player] as f64)
+        }
+    }
+}
+
+fn pack_state(state: PackedState) -> u64 {
+    let mut out = 0_u64;
+    let mut shift = 0;
+    for value in state.deal {
+        out |= (value as u64) << shift;
+        shift += 3;
+    }
+    out |= (state.round as u64) << shift;
+    shift += 1;
+    out |= (state.current as u64) << shift;
+    shift += 1;
+    for value in state.contributions {
+        out |= (value as u64) << shift;
+        shift += 4;
+    }
+    for value in state.bets {
+        out |= (value as u64) << shift;
+        shift += 4;
+    }
+    out |= (state.raises as u64) << shift;
+    shift += 2;
+    for round in 0..2 {
+        for idx in 0..4 {
+            out |= (state.history[round][idx] as u64) << shift;
+            shift += 3;
+        }
+    }
+    for value in state.history_len {
+        out |= (value as u64) << shift;
+        shift += 3;
+    }
+    out |= (state.terminal as u64) << shift;
+    shift += 1;
+    out |= (state.folded as u64) << shift;
+    out
+}
+
+fn unpack_state(mut packed: u64) -> PackedState {
+    let mut take = |bits: u8| {
+        let mask = (1_u64 << bits) - 1;
+        let value = (packed & mask) as u8;
+        packed >>= bits;
+        value
+    };
+    let deal = [take(3), take(3), take(3)];
+    let round = take(1);
+    let current = take(1);
+    let contributions = [take(4), take(4)];
+    let bets = [take(4), take(4)];
+    let raises = take(2);
+    let mut history = [[FFI_EMPTY; 4]; 2];
+    for round_history in &mut history {
+        for action in round_history {
+            *action = take(3);
+        }
+    }
+    let history_len = [take(3), take(3)];
+    let terminal = take(1) != 0;
+    let folded = take(2);
+    PackedState {
+        deal,
+        round,
+        current,
+        contributions,
+        bets,
+        raises,
+        history,
+        history_len,
+        terminal,
+        folded,
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_initial_state(c0: u8, c1: u8, c2: u8) -> u64 {
+    pack_state(PackedState::new(c0, c1, c2))
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_is_terminal(state: u64) -> u8 {
+    unpack_state(state).terminal as u8
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_current_player(state: u64) -> u8 {
+    unpack_state(state).current
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_legal_actions(state: u64) -> u32 {
+    let legal = unpack_state(state).legal_actions();
+    (legal[0] as u32)
+        | ((legal[1] as u32) << 8)
+        | ((legal[2] as u32) << 16)
+        | ((legal[3] as u32) << 24)
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_apply_action(state: u64, action: u8) -> u64 {
+    pack_state(unpack_state(state).apply(action))
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_utility(state: u64, player: u8) -> f64 {
+    unpack_state(state).utility(player as usize)
+}
+
+#[no_mangle]
+pub extern "C" fn leduc_infoset_parts(state: u64, player: u8) -> u64 {
+    let state = unpack_state(state);
+    let private = PackedState::rank(state.deal[player as usize]);
+    let public = if state.round == 1 {
+        PackedState::rank(state.deal[2])
+    } else {
+        3
+    };
+    let mut out = private as u64;
+    out |= (public as u64) << 3;
+    out |= (state.round as u64) << 6;
+    out |= (state.history_len[0] as u64) << 7;
+    out |= (state.history_len[1] as u64) << 10;
+    let mut shift = 13;
+    for round in 0..2 {
+        for idx in 0..4 {
+            out |= (state.history[round][idx] as u64) << shift;
+            shift += 3;
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -348,4 +644,3 @@ mod tests {
         assert!(!king_vs_queen.info_set_key(0).contains('Q'));
     }
 }
-

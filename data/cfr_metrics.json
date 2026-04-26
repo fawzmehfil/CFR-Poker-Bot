@@ -1,5 +1,5 @@
 {
-  "latest_run_id": "balanced-weighted",
+  "latest_run_id": "run-20260426T153822Z",
   "runs": {
     "run-20260426T031308Z": {
       "run_id": "run-20260426T031308Z",
@@ -3459,6 +3459,57 @@
           "selected_best": false
         }
       ]
+    },
+    "run-20260426T153822Z": {
+      "run_id": "run-20260426T153822Z",
+      "timestamp": "2026-04-26T15:38:26.678819+00:00",
+      "preset": "default",
+      "algorithm": "cfr",
+      "engine_requested": "auto",
+      "engine_used": "rust",
+      "iterations": 1000,
+      "seed": 7,
+      "eval_interval": 100,
+      "selection_mode": "best_gap",
+      "selection_weights": {
+        "gap": 0.45,
+        "random": 0.2,
+        "heuristic": 0.35
+      },
+      "gap_tolerance": 0.0,
+      "selection_hands": 500,
+      "cfr_plus": false,
+      "final_avg_utility_p0": -0.049250629879,
+      "best_observed_nash_gap_upper_bound": 1.981910866776,
+      "selected_iteration": 200,
+      "selected_gap": 1.9819108667760186,
+      "selected_vs_random_avg_utility": 1.036,
+      "selected_vs_heuristic_avg_utility": -0.118,
+      "selected_checkpoint_iteration": 200,
+      "selected_checkpoint_nash_gap_upper_bound": 1.9819108667760186,
+      "selected_checkpoint_heuristic_avg_utility": -0.118,
+      "selected_checkpoint_random_avg_utility": 1.036,
+      "selected_balanced_scores": null,
+      "infosets": 288,
+      "runtime_sec": 3.843488,
+      "root_traversals": 120000,
+      "root_traversals_per_sec": 31221.64,
+      "series": [
+        {
+          "iteration": 200,
+          "expected_game_value_p0": -0.08562937682218837,
+          "nash_gap_upper_bound": 1.9819108667760186,
+          "selection_heuristic_avg_utility": -0.118,
+          "selection_random_avg_utility": 1.036,
+          "training_utility_p0": -0.167015888235,
+          "avg_utility_p0": -0.167015888235,
+          "runtime_sec": 3.843488,
+          "root_traversals": 120000,
+          "root_traversals_per_sec": 31221.64,
+          "infosets": 288,
+          "selected_best": true
+        }
+      ]
     }
   },
   "comparison": [
@@ -3561,6 +3612,16 @@
       "final_nash_gap_upper_bound": 2.1324800924967553,
       "runtime_sec": 39.79092683400086,
       "root_traversals_per_sec": 9047.288631949745
+    },
+    {
+      "run_id": "run-20260426T153822Z",
+      "algorithm": "cfr",
+      "iterations": 1000,
+      "infosets": 288,
+      "final_expected_game_value_p0": -0.08562937682218837,
+      "final_nash_gap_upper_bound": 1.9819108667760186,
+      "runtime_sec": 3.843488,
+      "root_traversals_per_sec": 31221.64
     }
   ]
 }
