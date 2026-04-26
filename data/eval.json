@@ -1,0 +1,7 @@
+{
+  "expected_game_value_p0": -0.08629834087477846,
+  "full_information_best_response_p0": 2.038480980686352,
+  "full_information_best_response_p1": 2.106492749429389,
+  "nash_gap_upper_bound": 2.0724868650578703,
+  "infosets": 288
+}
