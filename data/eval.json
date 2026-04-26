@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-26T03:22:44.377355+00:00",
+  "timestamp": "2026-04-26T03:38:42.817769+00:00",
   "metric_labels": {
     "expected_game_value_p0": "Exact expected value for player 0 when both seats use the saved average strategy.",
     "nash_gap_upper_bound": "Full-information best-response diagnostic; upper-bound proxy, not exact exploitability.",

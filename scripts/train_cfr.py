@@ -4,6 +4,7 @@ import argparse
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+import random
 import sys
 import time
 
@@ -65,67 +66,103 @@ def plot_training_curves(points: list[dict], path: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=1000)
+    parser.add_argument("--algo", choices=["cfr", "cfr-plus"], default="cfr")
     parser.add_argument("--cfr-plus", action="store_true")
-    parser.add_argument("--out", default="data/cfr_strategy.json")
-    parser.add_argument("--metrics", default="data/cfr_metrics.json")
-    parser.add_argument("--plot", default="data/training_curves.png")
+    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--output-dir", default="data")
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--metrics", default=None)
+    parser.add_argument("--plot", default=None)
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--track-every", type=int, default=100)
+    parser.add_argument("--eval-interval", type=int, default=None)
     args = parser.parse_args()
 
+    random.seed(args.seed)
+    output_dir = Path(args.output_dir)
+    out_path = args.out or str(output_dir / "cfr_strategy.json")
+    metrics_path = args.metrics or str(output_dir / "cfr_metrics.json")
+    plot_path = args.plot if args.plot is not None else str(output_dir / "training_curves.png")
+    eval_interval = args.eval_interval or args.track_every
+    cfr_plus = args.cfr_plus or args.algo == "cfr-plus"
     run_id = args.run_id or datetime.now(UTC).strftime("run-%Y%m%dT%H%M%SZ")
-    trainer = CFRTrainer(cfr_plus=args.cfr_plus)
+    trainer = CFRTrainer(cfr_plus=cfr_plus)
     utilities = []
     points = []
     start = time.perf_counter()
     for iteration in range(1, args.iterations + 1):
         utilities.extend(trainer.train(1))
-        if iteration == 1 or iteration == args.iterations or iteration % args.track_every == 0:
+        if iteration == 1 or iteration == args.iterations or iteration % eval_interval == 0:
+            elapsed = time.perf_counter() - start
+            root_traversals = iteration * len(trainer.deals)
             profile_at_checkpoint = trainer.profile()
-            points.append(
-                {
-                    "iteration": iteration,
-                    "expected_game_value_p0": expected_game_value(profile_at_checkpoint),
-                    "nash_gap_upper_bound": nash_gap_upper_bound(profile_at_checkpoint),
-                    "training_utility_p0": utilities[-1],
-                    "runtime_sec": time.perf_counter() - start,
-                }
+            point = {
+                "iteration": iteration,
+                "expected_game_value_p0": expected_game_value(profile_at_checkpoint),
+                "nash_gap_upper_bound": nash_gap_upper_bound(profile_at_checkpoint),
+                "training_utility_p0": utilities[-1],
+                "avg_utility_p0": sum(utilities) / len(utilities),
+                "runtime_sec": elapsed,
+                "root_traversals": root_traversals,
+                "root_traversals_per_sec": root_traversals / elapsed if elapsed > 0 else 0.0,
+                "infosets": len(profile_at_checkpoint.strategies),
+            }
+            points.append(point)
+            print(
+                "iter={iteration} elapsed={elapsed:.3f}s traversals_per_sec={tps:.1f} "
+                "avg_utility={avg:.6f} gap_proxy={gap:.6f} infosets={infosets}".format(
+                    iteration=iteration,
+                    elapsed=elapsed,
+                    tps=point["root_traversals_per_sec"],
+                    avg=point["avg_utility_p0"],
+                    gap=point["nash_gap_upper_bound"],
+                    infosets=point["infosets"],
+                )
             )
     profile = trainer.profile()
-    profile.save(args.out)
+    profile.save(out_path)
+    total_elapsed = time.perf_counter() - start
+    total_root_traversals = args.iterations * len(trainer.deals)
 
     final_metrics = {
         "run_id": run_id,
         "timestamp": datetime.now(UTC).isoformat(),
+        "algorithm": "cfr-plus" if cfr_plus else "cfr",
         "iterations": args.iterations,
-        "cfr_plus": args.cfr_plus,
+        "seed": args.seed,
+        "eval_interval": eval_interval,
+        "cfr_plus": cfr_plus,
         "final_avg_utility_p0": utilities[-1] if utilities else 0.0,
         "infosets": len(profile.strategies),
-        "runtime_sec": time.perf_counter() - start,
+        "runtime_sec": total_elapsed,
+        "root_traversals": total_root_traversals,
+        "root_traversals_per_sec": total_root_traversals / total_elapsed if total_elapsed > 0 else 0.0,
         "series": points,
     }
-    Path(args.metrics).parent.mkdir(parents=True, exist_ok=True)
+    Path(metrics_path).parent.mkdir(parents=True, exist_ok=True)
     existing = {}
-    if Path(args.metrics).exists():
-        existing = json.loads(Path(args.metrics).read_text())
+    if Path(metrics_path).exists():
+        existing = json.loads(Path(metrics_path).read_text())
     runs = existing.get("runs", {})
     runs[run_id] = final_metrics
     comparison = [
         {
             "run_id": key,
+            "algorithm": value.get("algorithm", "cfr-plus" if value.get("cfr_plus") else "cfr"),
             "iterations": value["iterations"],
             "infosets": value["infosets"],
             "final_expected_game_value_p0": value["series"][-1]["expected_game_value_p0"],
             "final_nash_gap_upper_bound": value["series"][-1]["nash_gap_upper_bound"],
             "runtime_sec": value["runtime_sec"],
+            "root_traversals_per_sec": value.get("root_traversals_per_sec", 0.0),
         }
         for key, value in sorted(runs.items())
     ]
-    Path(args.metrics).write_text(json.dumps({"latest_run_id": run_id, "runs": runs, "comparison": comparison}, indent=2))
-    if args.plot:
-        plot_training_curves(points, args.plot)
-    print(f"saved {len(profile.strategies)} infosets to {args.out}")
-    print(f"saved training metrics to {args.metrics}")
+    Path(metrics_path).write_text(json.dumps({"latest_run_id": run_id, "runs": runs, "comparison": comparison}, indent=2))
+    if plot_path:
+        plot_training_curves(points, plot_path)
+    print(f"saved {len(profile.strategies)} infosets to {out_path}")
+    print(f"saved training metrics to {metrics_path}")
 
 
 if __name__ == "__main__":
