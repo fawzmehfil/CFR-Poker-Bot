@@ -11,6 +11,8 @@ from pydantic import BaseModel
 
 from leduc_cfr.cfr.trainer import CFRTrainer, StrategyProfile
 from leduc_cfr.eval.metrics import heuristic_policy, random_policy
+from leduc_cfr.holdem.engine import Action as HoldemAction
+from leduc_cfr.holdem.engine import HoldemState, fresh_holdem_state, heuristic_action as holdem_heuristic_action
 from leduc_cfr.neural.policy import NeuralPolicy
 from leduc_cfr.poker.leduc import Action, fresh_state
 
@@ -21,6 +23,10 @@ BotMode = Literal["random", "heuristic", "cfr", "neural"]
 
 class ActRequest(BaseModel):
     action: Action
+
+
+class HoldemActRequest(BaseModel):
+    action: HoldemAction
 
 
 class NewGameRequest(BaseModel):
@@ -67,6 +73,33 @@ class GameSession:
         return self.profile.sample_action(self.state.info_set_key(1), self.state.legal_actions(), self.rng)
 
 
+class HoldemSession:
+    def __init__(self) -> None:
+        self.rng = random.Random()
+        self.state: HoldemState = fresh_holdem_state(self.rng)
+        self._bot_until_human()
+
+    def view(self) -> dict:
+        view = self.state.public_view(human_player=0)
+        view["session_id"] = self.session_id
+        view["mode"] = "holdem"
+        return view
+
+    def act(self, action: HoldemAction) -> dict:
+        if self.state.terminal:
+            raise ValueError("Game is already over")
+        if self.state.current_player != 0:
+            raise ValueError("It is not the human player's turn")
+        self.state = self.state.apply(action)
+        self._bot_until_human()
+        return self.view()
+
+    def _bot_until_human(self) -> None:
+        while not self.state.terminal and self.state.current_player == 1:
+            action = holdem_heuristic_action(self.state, 1, self.rng)
+            self.state = self.state.apply(action)
+
+
 def load_profile() -> StrategyProfile:
     if DATA_PATH.exists():
         return StrategyProfile.load(DATA_PATH)
@@ -98,6 +131,7 @@ app.add_middleware(
 PROFILE = load_profile()
 NEURAL_POLICY = load_neural_policy()
 SESSIONS: dict[str, GameSession] = {}
+HOLDEM_SESSIONS: dict[str, HoldemSession] = {}
 
 
 @app.get("/health")
@@ -106,6 +140,7 @@ def health() -> dict:
         "ok": True,
         "strategy_infosets": len(PROFILE.strategies),
         "bot_modes": ["random", "heuristic", "cfr", "neural"],
+        "modes": ["leduc", "holdem"],
         "neural_available": NEURAL_POLICY is not None,
     }
 
@@ -124,6 +159,25 @@ def act(session_id: str, req: ActRequest) -> dict:
     session = SESSIONS.get(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Unknown session")
+    try:
+        return session.act(req.action)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/holdem/new-game")
+def new_holdem_game() -> dict:
+    session = HoldemSession()
+    session.session_id = str(uuid.uuid4())
+    HOLDEM_SESSIONS[session.session_id] = session
+    return session.view()
+
+
+@app.post("/api/holdem/game/{session_id}/act")
+def holdem_act(session_id: str, req: HoldemActRequest) -> dict:
+    session = HOLDEM_SESSIONS.get(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Unknown Hold'em session")
     try:
         return session.act(req.action)
     except ValueError as exc:

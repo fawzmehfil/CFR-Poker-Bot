@@ -75,6 +75,30 @@ button:disabled {
   place-items: center;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modeToggle {
+  display: flex;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.modeToggle button {
+  border: 0;
+  border-radius: 0;
+  min-height: 40px;
+}
+
+.modeToggle .selected {
+  background: #172033;
+  color: #ffffff;
+}
+
 .primary {
   background: #1d4ed8;
   color: #ffffff;
@@ -135,6 +159,26 @@ button:disabled {
   color: #ffffff;
 }
 
+.cardsRow {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.holdemFelt {
+  min-height: 520px;
+}
+
+.holdemBoard {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.boardCards .card {
+  width: 72px;
+  font-size: 25px;
+}
+
 .controls {
   display: flex;
   gap: 10px;
@@ -175,8 +219,22 @@ button:disabled {
     flex-wrap: wrap;
   }
 
+  .headerActions {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
+
+  .modeToggle button {
+    padding: 0 10px;
+  }
+
   .pot,
   .status {
     min-width: 120px;
+  }
+
+  .boardCards .card {
+    width: 52px;
+    font-size: 18px;
   }
 }

@@ -2,6 +2,8 @@
 
 Tabular Counterfactual Regret Minimization for Leduc Poker with neural policy approximation, FastAPI/React gameplay, and high-performance Rust simulation/training.
 
+![Banner](assets/cfr_poker_banner.png)
+
 ## Overview
 
 Poker is an imperfect-information game: players must act under hidden information, stochastic outcomes, and strategic deception. Unlike perfect-information games such as chess, the value of an action depends on private cards, public history, and the distribution of strategies an opponent may be using.
