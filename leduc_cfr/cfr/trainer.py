@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import itertools
 import json
 import random
+from functools import lru_cache
 from pathlib import Path
 
 from leduc_cfr.poker.leduc import CARDS, Action, LeducState
@@ -93,8 +94,8 @@ class CFRTrainer:
             return state.utility(0)
 
         player = state.current_player
-        legal = state.legal_actions()
-        key = state.info_set_key(player)
+        legal = _legal_actions(state)
+        key = _info_set_key(state, player)
         info = self.info_sets.setdefault(key, InfoSet())
         strategy = info.strategy(legal)
 
@@ -105,7 +106,7 @@ class CFRTrainer:
         child_values: dict[Action, float] = {}
         node_value = 0.0
         for action in legal:
-            next_state = state.apply(action)
+            next_state = _apply_action(state, action)
             if player == 0:
                 child_values[action] = self._cfr(next_state, reach0 * strategy[action], reach1)
             else:
@@ -124,3 +125,17 @@ class CFRTrainer:
 
         return node_value
 
+
+@lru_cache(maxsize=None)
+def _legal_actions(state: LeducState) -> tuple[Action, ...]:
+    return state.legal_actions()
+
+
+@lru_cache(maxsize=None)
+def _info_set_key(state: LeducState, player: int) -> str:
+    return state.info_set_key(player)
+
+
+@lru_cache(maxsize=None)
+def _apply_action(state: LeducState, action: Action) -> LeducState:
+    return state.apply(action)

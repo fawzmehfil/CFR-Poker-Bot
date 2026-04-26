@@ -1,65 +1,65 @@
 {
-  "timestamp": "2026-04-26T03:38:42.817769+00:00",
+  "timestamp": "2026-04-26T03:48:27.510551+00:00",
   "metric_labels": {
     "expected_game_value_p0": "Exact expected value for player 0 when both seats use the saved average strategy.",
     "nash_gap_upper_bound": "Full-information best-response diagnostic; upper-bound proxy, not exact exploitability.",
     "head_to_head": "Monte Carlo simulation over seeded deals/actions with confidence intervals across seeds."
   },
-  "expected_game_value_p0": -0.08750380705850856,
-  "full_information_best_response_p0": 2.1003697760717417,
-  "full_information_best_response_p1": 2.1321449170023734,
-  "nash_gap_upper_bound": 2.1162573465370578,
+  "expected_game_value_p0": -0.08714860098281371,
+  "full_information_best_response_p0": 2.0744297108997274,
+  "full_information_best_response_p1": 2.1389178368071944,
+  "nash_gap_upper_bound": 2.106673773853461,
   "infosets": 288,
   "hands_played": 5000,
   "cfr_vs_random": {
     "hands_per_seed": 1000,
     "seeds": 5,
     "hands_total": 5000,
-    "win_rate": 0.4564,
+    "win_rate": 0.4578,
     "win_rate_ci95": [
-      0.4379655774161489,
-      0.47483442258385106
+      0.4390473984738117,
+      0.4765526015261883
     ],
-    "avg_utility": 0.761,
+    "avg_utility": 0.7088,
     "avg_utility_ci95": [
-      0.6426818925100642,
-      0.8793181074899358
+      0.6007003582614633,
+      0.8168996417385367
     ],
     "runs": [
       {
         "hands": 1000,
+        "win_rate": 0.471,
+        "loss_rate": 0.446,
+        "draw_rate": 0.083,
+        "avg_utility": 0.823
+      },
+      {
+        "hands": 1000,
+        "win_rate": 0.444,
+        "loss_rate": 0.472,
+        "draw_rate": 0.084,
+        "avg_utility": 0.702
+      },
+      {
+        "hands": 1000,
         "win_rate": 0.47,
-        "loss_rate": 0.449,
-        "draw_rate": 0.081,
+        "loss_rate": 0.453,
+        "draw_rate": 0.077,
         "avg_utility": 0.817
       },
       {
         "hands": 1000,
-        "win_rate": 0.446,
-        "loss_rate": 0.46,
-        "draw_rate": 0.094,
-        "avg_utility": 0.878
+        "win_rate": 0.427,
+        "loss_rate": 0.494,
+        "draw_rate": 0.079,
+        "avg_utility": 0.521
       },
       {
         "hands": 1000,
-        "win_rate": 0.471,
-        "loss_rate": 0.454,
-        "draw_rate": 0.075,
-        "avg_utility": 0.821
-      },
-      {
-        "hands": 1000,
-        "win_rate": 0.424,
-        "loss_rate": 0.496,
-        "draw_rate": 0.08,
-        "avg_utility": 0.532
-      },
-      {
-        "hands": 1000,
-        "win_rate": 0.471,
-        "loss_rate": 0.462,
-        "draw_rate": 0.067,
-        "avg_utility": 0.757
+        "win_rate": 0.477,
+        "loss_rate": 0.464,
+        "draw_rate": 0.059,
+        "avg_utility": 0.681
       }
     ]
   },
@@ -67,51 +67,51 @@
     "hands_per_seed": 1000,
     "seeds": 5,
     "hands_total": 5000,
-    "win_rate": 0.3776,
+    "win_rate": 0.37879999999999997,
     "win_rate_ci95": [
-      0.3594173682872913,
-      0.39578263171270867
+      0.36116653454365816,
+      0.3964334654563418
     ],
-    "avg_utility": 0.0706,
+    "avg_utility": 0.1022,
     "avg_utility_ci95": [
-      -0.06800484759199443,
-      0.20920484759199443
+      -0.02160840772742373,
+      0.22600840772742373
     ],
     "runs": [
       {
         "hands": 1000,
-        "win_rate": 0.359,
-        "loss_rate": 0.441,
-        "draw_rate": 0.2,
-        "avg_utility": -0.064
+        "win_rate": 0.364,
+        "loss_rate": 0.434,
+        "draw_rate": 0.202,
+        "avg_utility": 0.014
       },
       {
         "hands": 1000,
-        "win_rate": 0.412,
+        "win_rate": 0.413,
         "loss_rate": 0.41,
-        "draw_rate": 0.178,
-        "avg_utility": 0.324
+        "draw_rate": 0.177,
+        "avg_utility": 0.345
       },
       {
         "hands": 1000,
-        "win_rate": 0.378,
-        "loss_rate": 0.429,
+        "win_rate": 0.376,
+        "loss_rate": 0.431,
         "draw_rate": 0.193,
-        "avg_utility": 0.089
+        "avg_utility": 0.091
       },
       {
         "hands": 1000,
-        "win_rate": 0.375,
-        "loss_rate": 0.44,
-        "draw_rate": 0.185,
-        "avg_utility": -0.061
+        "win_rate": 0.377,
+        "loss_rate": 0.439,
+        "draw_rate": 0.184,
+        "avg_utility": -0.006
       },
       {
         "hands": 1000,
         "win_rate": 0.364,
         "loss_rate": 0.425,
         "draw_rate": 0.211,
-        "avg_utility": 0.065
+        "avg_utility": 0.067
       }
     ]
   },
@@ -225,51 +225,51 @@
       "hands_per_seed": 1000,
       "seeds": 5,
       "hands_total": 5000,
-      "win_rate": 0.4516,
+      "win_rate": 0.4586,
       "win_rate_ci95": [
-        0.4303577229092548,
-        0.4728422770907452
+        0.43764907601082953,
+        0.4795509239891705
       ],
-      "avg_utility": -0.0522,
+      "avg_utility": -0.0306,
       "avg_utility_ci95": [
-        -0.17482991830707548,
-        0.07042991830707546
+        -0.1495472956228934,
+        0.08834729562289341
       ],
       "runs": [
         {
           "hands": 1000,
-          "win_rate": 0.439,
-          "loss_rate": 0.418,
+          "win_rate": 0.447,
+          "loss_rate": 0.41,
           "draw_rate": 0.143,
-          "avg_utility": -0.115
+          "avg_utility": -0.043
         },
         {
           "hands": 1000,
-          "win_rate": 0.49,
-          "loss_rate": 0.388,
-          "draw_rate": 0.122,
+          "win_rate": 0.495,
+          "loss_rate": 0.381,
+          "draw_rate": 0.124,
           "avg_utility": 0.154
         },
         {
           "hands": 1000,
-          "win_rate": 0.46,
+          "win_rate": 0.47,
+          "loss_rate": 0.384,
+          "draw_rate": 0.146,
+          "avg_utility": 0.048
+        },
+        {
+          "hands": 1000,
+          "win_rate": 0.436,
+          "loss_rate": 0.418,
+          "draw_rate": 0.146,
+          "avg_utility": -0.186
+        },
+        {
+          "hands": 1000,
+          "win_rate": 0.445,
           "loss_rate": 0.397,
-          "draw_rate": 0.143,
-          "avg_utility": 0.029
-        },
-        {
-          "hands": 1000,
-          "win_rate": 0.429,
-          "loss_rate": 0.419,
-          "draw_rate": 0.152,
-          "avg_utility": -0.162
-        },
-        {
-          "hands": 1000,
-          "win_rate": 0.44,
-          "loss_rate": 0.405,
-          "draw_rate": 0.155,
-          "avg_utility": -0.167
+          "draw_rate": 0.158,
+          "avg_utility": -0.126
         }
       ]
     }

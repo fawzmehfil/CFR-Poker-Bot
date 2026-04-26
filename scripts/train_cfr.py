@@ -10,7 +10,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from leduc_cfr.cfr.trainer import CFRTrainer
-from leduc_cfr.eval.metrics import expected_game_value, nash_gap_upper_bound
+from leduc_cfr.eval.metrics import expected_game_value, head_to_head, heuristic_policy, nash_gap_upper_bound, random_policy
 
 
 def plot_training_curves(points: list[dict], path: str) -> None:
@@ -65,7 +65,8 @@ def plot_training_curves(points: list[dict], path: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--iterations", type=int, default=1000)
+    parser.add_argument("--preset", choices=["quick", "default", "strong"], default="default")
+    parser.add_argument("--iterations", type=int, default=None)
     parser.add_argument("--algo", choices=["cfr", "cfr-plus"], default="cfr")
     parser.add_argument("--cfr-plus", action="store_true")
     parser.add_argument("--seed", type=int, default=7)
@@ -74,32 +75,60 @@ def main() -> None:
     parser.add_argument("--metrics", default=None)
     parser.add_argument("--plot", default=None)
     parser.add_argument("--run-id", default=None)
-    parser.add_argument("--track-every", type=int, default=100)
+    parser.add_argument("--track-every", type=int, default=None)
     parser.add_argument("--eval-interval", type=int, default=None)
+    parser.add_argument("--gap-tolerance", type=float, default=None)
+    parser.add_argument("--selection-hands", type=int, default=None)
     args = parser.parse_args()
 
+    preset_defaults = {
+        "quick": {"iterations": 100, "track_every": 50, "gap_tolerance": 0.0, "selection_hands": 0},
+        "default": {"iterations": 1000, "track_every": 100, "gap_tolerance": 0.0, "selection_hands": 0},
+        "strong": {"iterations": 3000, "track_every": 100, "gap_tolerance": 0.15, "selection_hands": 1000},
+    }
+    preset = preset_defaults[args.preset]
+    iterations = args.iterations or preset["iterations"]
+    track_every = args.track_every or preset["track_every"]
+    gap_tolerance = preset["gap_tolerance"] if args.gap_tolerance is None else args.gap_tolerance
+    selection_hands = preset["selection_hands"] if args.selection_hands is None else args.selection_hands
     random.seed(args.seed)
     output_dir = Path(args.output_dir)
     out_path = args.out or str(output_dir / "cfr_strategy.json")
     metrics_path = args.metrics or str(output_dir / "cfr_metrics.json")
     plot_path = args.plot if args.plot is not None else str(output_dir / "training_curves.png")
-    eval_interval = args.eval_interval or args.track_every
+    eval_interval = args.eval_interval or track_every
     cfr_plus = args.cfr_plus or args.algo == "cfr-plus"
     run_id = args.run_id or datetime.now(UTC).strftime("run-%Y%m%dT%H%M%SZ")
     trainer = CFRTrainer(cfr_plus=cfr_plus)
     utilities = []
     points = []
+    best_gap = float("inf")
+    checkpoint_profiles = []
     start = time.perf_counter()
-    for iteration in range(1, args.iterations + 1):
+    for iteration in range(1, iterations + 1):
         utilities.extend(trainer.train(1))
-        if iteration == 1 or iteration == args.iterations or iteration % eval_interval == 0:
+        if iteration == 1 or iteration == iterations or iteration % eval_interval == 0:
             elapsed = time.perf_counter() - start
             root_traversals = iteration * len(trainer.deals)
             profile_at_checkpoint = trainer.profile()
+            gap = nash_gap_upper_bound(profile_at_checkpoint)
+            if gap < best_gap:
+                best_gap = gap
+            heuristic_avg_utility = None
+            random_avg_utility = None
+            if selection_hands > 0:
+                heuristic_avg_utility = head_to_head(
+                    profile_at_checkpoint, heuristic_policy, hands=selection_hands, seed=args.seed + 5
+                )["avg_utility"]
+                random_avg_utility = head_to_head(
+                    profile_at_checkpoint, random_policy, hands=selection_hands, seed=args.seed
+                )["avg_utility"]
             point = {
                 "iteration": iteration,
                 "expected_game_value_p0": expected_game_value(profile_at_checkpoint),
-                "nash_gap_upper_bound": nash_gap_upper_bound(profile_at_checkpoint),
+                "nash_gap_upper_bound": gap,
+                "selection_heuristic_avg_utility": heuristic_avg_utility,
+                "selection_random_avg_utility": random_avg_utility,
                 "training_utility_p0": utilities[-1],
                 "avg_utility_p0": sum(utilities) / len(utilities),
                 "runtime_sec": elapsed,
@@ -108,31 +137,58 @@ def main() -> None:
                 "infosets": len(profile_at_checkpoint.strategies),
             }
             points.append(point)
+            checkpoint_profiles.append((point, profile_at_checkpoint))
             print(
                 "iter={iteration} elapsed={elapsed:.3f}s traversals_per_sec={tps:.1f} "
-                "avg_utility={avg:.6f} gap_proxy={gap:.6f} infosets={infosets}".format(
+                "avg_utility={avg:.6f} gap_proxy={gap:.6f} heuristic={heuristic} infosets={infosets}".format(
                     iteration=iteration,
                     elapsed=elapsed,
                     tps=point["root_traversals_per_sec"],
                     avg=point["avg_utility_p0"],
                     gap=point["nash_gap_upper_bound"],
+                    heuristic="n/a" if heuristic_avg_utility is None else f"{heuristic_avg_utility:.6f}",
                     infosets=point["infosets"],
                 )
             )
-    profile = trainer.profile()
+    eligible = [
+        (point, profile_at_checkpoint)
+        for point, profile_at_checkpoint in checkpoint_profiles
+        if point["nash_gap_upper_bound"] <= best_gap + gap_tolerance
+    ]
+    if selection_hands > 0 and eligible:
+        selected_point, profile = max(
+            eligible,
+            key=lambda item: (
+                item[0]["selection_heuristic_avg_utility"],
+                item[0]["selection_random_avg_utility"],
+                -item[0]["nash_gap_upper_bound"],
+            ),
+        )
+    else:
+        selected_point, profile = min(checkpoint_profiles, key=lambda item: item[0]["nash_gap_upper_bound"])
+    for point in points:
+        point["selected_best"] = point["iteration"] == selected_point["iteration"]
     profile.save(out_path)
     total_elapsed = time.perf_counter() - start
-    total_root_traversals = args.iterations * len(trainer.deals)
+    total_root_traversals = iterations * len(trainer.deals)
 
     final_metrics = {
         "run_id": run_id,
         "timestamp": datetime.now(UTC).isoformat(),
+        "preset": args.preset,
         "algorithm": "cfr-plus" if cfr_plus else "cfr",
-        "iterations": args.iterations,
+        "iterations": iterations,
         "seed": args.seed,
         "eval_interval": eval_interval,
+        "gap_tolerance": gap_tolerance,
+        "selection_hands": selection_hands,
         "cfr_plus": cfr_plus,
         "final_avg_utility_p0": utilities[-1] if utilities else 0.0,
+        "best_observed_nash_gap_upper_bound": best_gap,
+        "selected_checkpoint_iteration": selected_point["iteration"],
+        "selected_checkpoint_nash_gap_upper_bound": selected_point["nash_gap_upper_bound"],
+        "selected_checkpoint_heuristic_avg_utility": selected_point["selection_heuristic_avg_utility"],
+        "selected_checkpoint_random_avg_utility": selected_point["selection_random_avg_utility"],
         "infosets": len(profile.strategies),
         "runtime_sec": total_elapsed,
         "root_traversals": total_root_traversals,
