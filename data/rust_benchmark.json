@@ -1,0 +1,15 @@
+{
+  "hands": 1000000,
+  "python_hands": 50000,
+  "random_hands_per_sec": 23198402.76,
+  "terminal_rollouts_per_sec": 24459894.94,
+  "state_transitions_per_sec": 145738515.63,
+  "python_hands_per_sec": 62684.32,
+  "rust_hands_per_sec": 23198402.76,
+  "speedup_factor": 370.08,
+  "avg_utility_p0": -2.392570,
+  "avg_transitions_per_hand": 5.0021,
+  "correctness_comparison_passed": true,
+  "rust_trace": "fold:round=0;current=1;terminal=true;pot=4;u0=1.0;legal=|showdown:round=1;current=1;terminal=true;pot=2;u0=1.0;legal=",
+  "python_trace": "fold:round=0;current=1;terminal=true;pot=4;u0=1.0;legal=|showdown:round=1;current=1;terminal=true;pot=2;u0=1.0;legal="
+}

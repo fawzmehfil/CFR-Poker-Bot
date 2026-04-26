@@ -77,13 +77,17 @@ def main() -> None:
     parser.add_argument("--run-id", default=None)
     parser.add_argument("--track-every", type=int, default=None)
     parser.add_argument("--eval-interval", type=int, default=None)
+    parser.add_argument("--selection", choices=["best_gap", "best_heuristic", "balanced"], default="best_gap")
+    parser.add_argument("--w-gap", type=float, default=0.45)
+    parser.add_argument("--w-random", type=float, default=0.20)
+    parser.add_argument("--w-heuristic", type=float, default=0.35)
     parser.add_argument("--gap-tolerance", type=float, default=None)
     parser.add_argument("--selection-hands", type=int, default=None)
     args = parser.parse_args()
 
     preset_defaults = {
-        "quick": {"iterations": 100, "track_every": 50, "gap_tolerance": 0.0, "selection_hands": 0},
-        "default": {"iterations": 1000, "track_every": 100, "gap_tolerance": 0.0, "selection_hands": 0},
+        "quick": {"iterations": 100, "track_every": 50, "gap_tolerance": 0.0, "selection_hands": 200},
+        "default": {"iterations": 1000, "track_every": 100, "gap_tolerance": 0.0, "selection_hands": 500},
         "strong": {"iterations": 3000, "track_every": 100, "gap_tolerance": 0.15, "selection_hands": 1000},
     }
     preset = preset_defaults[args.preset]
@@ -116,13 +120,12 @@ def main() -> None:
                 best_gap = gap
             heuristic_avg_utility = None
             random_avg_utility = None
-            if selection_hands > 0:
-                heuristic_avg_utility = head_to_head(
-                    profile_at_checkpoint, heuristic_policy, hands=selection_hands, seed=args.seed + 5
-                )["avg_utility"]
-                random_avg_utility = head_to_head(
-                    profile_at_checkpoint, random_policy, hands=selection_hands, seed=args.seed
-                )["avg_utility"]
+            heuristic_avg_utility = head_to_head(
+                profile_at_checkpoint, heuristic_policy, hands=selection_hands, seed=args.seed + 5
+            )["avg_utility"]
+            random_avg_utility = head_to_head(
+                profile_at_checkpoint, random_policy, hands=selection_hands, seed=args.seed
+            )["avg_utility"]
             point = {
                 "iteration": iteration,
                 "expected_game_value_p0": expected_game_value(profile_at_checkpoint),
@@ -150,22 +153,76 @@ def main() -> None:
                     infosets=point["infosets"],
                 )
             )
-    eligible = [
-        (point, profile_at_checkpoint)
-        for point, profile_at_checkpoint in checkpoint_profiles
-        if point["nash_gap_upper_bound"] <= best_gap + gap_tolerance
-    ]
-    if selection_hands > 0 and eligible:
+    if args.selection == "best_gap":
+        selected_point, profile = min(checkpoint_profiles, key=lambda item: item[0]["nash_gap_upper_bound"])
+    elif args.selection == "best_heuristic":
         selected_point, profile = max(
-            eligible,
+            checkpoint_profiles,
             key=lambda item: (
                 item[0]["selection_heuristic_avg_utility"],
-                item[0]["selection_random_avg_utility"],
                 -item[0]["nash_gap_upper_bound"],
+                item[0]["selection_random_avg_utility"],
             ),
         )
     else:
-        selected_point, profile = min(checkpoint_profiles, key=lambda item: item[0]["nash_gap_upper_bound"])
+        gaps = [point["nash_gap_upper_bound"] for point, _ in checkpoint_profiles]
+        random_utils = [point["selection_random_avg_utility"] for point, _ in checkpoint_profiles]
+        heuristic_utils = [point["selection_heuristic_avg_utility"] for point, _ in checkpoint_profiles]
+        total_weight = args.w_gap + args.w_random + args.w_heuristic
+        if total_weight <= 0:
+            raise ValueError("Balanced selection weights must sum to a positive value")
+        weights = {
+            "gap": args.w_gap / total_weight,
+            "random": args.w_random / total_weight,
+            "heuristic": args.w_heuristic / total_weight,
+        }
+
+        def normalize(value: float, values: list[float], invert: bool = False) -> float:
+            lo = min(values)
+            hi = max(values)
+            if hi == lo:
+                return 1.0
+            score = (value - lo) / (hi - lo)
+            return 1.0 - score if invert else score
+
+        for point, _ in checkpoint_profiles:
+            gap_score = normalize(point["nash_gap_upper_bound"], gaps, invert=True)
+            random_score = normalize(point["selection_random_avg_utility"], random_utils)
+            heuristic_score = normalize(point["selection_heuristic_avg_utility"], heuristic_utils)
+            weighted_score = (
+                weights["gap"] * gap_score
+                + weights["random"] * random_score
+                + weights["heuristic"] * heuristic_score
+            )
+            point["balanced_scores"] = {
+                "gap_score": gap_score,
+                "random_score": random_score,
+                "heuristic_score": heuristic_score,
+                "weighted_score": weighted_score,
+                "weights": weights,
+            }
+
+        print("balanced checkpoint scores:")
+        for point, _ in checkpoint_profiles:
+            scores = point["balanced_scores"]
+            print(
+                "iter={iteration} gap_score={gap:.4f} random_score={random:.4f} "
+                "heuristic_score={heuristic:.4f} weighted_score={weighted:.4f}".format(
+                    iteration=point["iteration"],
+                    gap=scores["gap_score"],
+                    random=scores["random_score"],
+                    heuristic=scores["heuristic_score"],
+                    weighted=scores["weighted_score"],
+                )
+            )
+
+        selected_point, profile = max(
+            checkpoint_profiles,
+            key=lambda item: (
+                item[0]["balanced_scores"]["weighted_score"],
+                -item[0]["nash_gap_upper_bound"],
+            ),
+        )
     for point in points:
         point["selected_best"] = point["iteration"] == selected_point["iteration"]
     profile.save(out_path)
@@ -180,15 +237,26 @@ def main() -> None:
         "iterations": iterations,
         "seed": args.seed,
         "eval_interval": eval_interval,
+        "selection_mode": args.selection,
+        "selection_weights": {
+            "gap": args.w_gap,
+            "random": args.w_random,
+            "heuristic": args.w_heuristic,
+        },
         "gap_tolerance": gap_tolerance,
         "selection_hands": selection_hands,
         "cfr_plus": cfr_plus,
         "final_avg_utility_p0": utilities[-1] if utilities else 0.0,
         "best_observed_nash_gap_upper_bound": best_gap,
+        "selected_iteration": selected_point["iteration"],
+        "selected_gap": selected_point["nash_gap_upper_bound"],
+        "selected_vs_random_avg_utility": selected_point["selection_random_avg_utility"],
+        "selected_vs_heuristic_avg_utility": selected_point["selection_heuristic_avg_utility"],
         "selected_checkpoint_iteration": selected_point["iteration"],
         "selected_checkpoint_nash_gap_upper_bound": selected_point["nash_gap_upper_bound"],
         "selected_checkpoint_heuristic_avg_utility": selected_point["selection_heuristic_avg_utility"],
         "selected_checkpoint_random_avg_utility": selected_point["selection_random_avg_utility"],
+        "selected_balanced_scores": selected_point.get("balanced_scores"),
         "infosets": len(profile.strategies),
         "runtime_sec": total_elapsed,
         "root_traversals": total_root_traversals,
