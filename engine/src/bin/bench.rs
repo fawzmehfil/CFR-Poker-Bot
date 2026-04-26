@@ -325,10 +325,14 @@ fn main() {
         .nth(1)
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(1_000_000);
+    let seed = std::env::args()
+        .nth(2)
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(7);
     let transitions_target = hands * 8;
     let py_hands = (hands / 20).clamp(10_000, 100_000);
 
-    let mut rng = Lcg::new(7);
+    let mut rng = Lcg::new(seed);
     let start = Instant::now();
     let mut utility_sum = 0.0;
     let mut transition_count = 0_u64;
@@ -340,7 +344,7 @@ fn main() {
     let random_elapsed = start.elapsed().as_secs_f64();
     let random_hands_per_sec = hands as f64 / random_elapsed;
 
-    let mut rng = Lcg::new(11);
+    let mut rng = Lcg::new(seed + 4);
     let start = Instant::now();
     for _ in 0..hands {
         let _ = simulate_hand(&mut rng);
@@ -348,7 +352,7 @@ fn main() {
     let rollout_elapsed = start.elapsed().as_secs_f64();
     let terminal_rollouts_per_sec = hands as f64 / rollout_elapsed;
 
-    let mut rng = Lcg::new(13);
+    let mut rng = Lcg::new(seed + 6);
     let mut state = FastState::new(random_deal(&mut rng));
     let mut legal = [0; 3];
     let start = Instant::now();
@@ -374,6 +378,7 @@ fn main() {
         concat!(
             "{{\n",
             "  \"hands\": {hands},\n",
+            "  \"seed\": {seed},\n",
             "  \"python_hands\": {py_hands},\n",
             "  \"random_hands_per_sec\": {random_hands_per_sec:.2},\n",
             "  \"terminal_rollouts_per_sec\": {terminal_rollouts_per_sec:.2},\n",
@@ -389,6 +394,7 @@ fn main() {
             "}}\n"
         ),
         hands = hands,
+        seed = seed,
         py_hands = py_hands,
         random_hands_per_sec = random_hands_per_sec,
         terminal_rollouts_per_sec = terminal_rollouts_per_sec,

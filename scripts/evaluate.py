@@ -20,6 +20,7 @@ from leduc_cfr.eval.metrics import (
     random_policy,
     strategy_profile_policy,
 )
+from leduc_cfr.eval.rust_engine import resolve_evaluation_engine
 from leduc_cfr.neural.policy import NeuralPolicy
 
 
@@ -80,8 +81,11 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--seeds", type=int, default=5)
     parser.add_argument("--policy", default="data/policy.pt")
+    parser.add_argument("--engine", choices=["auto", "python", "rust"], default="auto")
+    parser.add_argument("--engine-hands", type=int, default=1_000_000)
     args = parser.parse_args()
 
+    engine_metrics = resolve_evaluation_engine(args.engine, hands=args.engine_hands, seed=args.seed)
     profile = StrategyProfile.load(args.strategy)
     cfr_policy = strategy_profile_policy(profile)
     p0_br, p1_br = full_information_best_response_values(profile)
@@ -119,6 +123,7 @@ def main() -> None:
         "nash_gap_upper_bound": nash_gap_upper_bound(profile),
         "infosets": len(profile.strategies),
         "hands_played": args.hands * args.seeds,
+        "engine": engine_metrics,
         "cfr_vs_random": cfr_vs_random,
         "cfr_vs_heuristic": cfr_vs_heuristic,
     }

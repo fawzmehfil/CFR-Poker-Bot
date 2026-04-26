@@ -8,7 +8,7 @@ Poker is an imperfect-information game: players must act under hidden informatio
 
 This project implements a complete research-engineering stack around **Leduc Poker**, a compact benchmark game commonly used for studying imperfect-information algorithms. Leduc is small enough for tabular methods and exhaustive game-tree evaluation, but still contains the essential poker structure: private cards, a public card, betting rounds, folds, showdowns, information sets, and mixed strategies.
 
-The core solver uses **Counterfactual Regret Minimization (CFR/CFR+)** to learn average strategies over information sets. Around that solver, the repo includes evaluation tooling, a PyTorch policy imitation model, a playable FastAPI + React app, and a Rust simulator for throughput benchmarking.
+The core solver uses **Counterfactual Regret Minimization (CFR/CFR+)** to learn average strategies over information sets. Around that solver, the repo includes evaluation tooling, a PyTorch policy imitation model, a playable FastAPI + React app, and a Rust simulator that can optionally accelerate evaluation-time random rollout benchmarks.
 
 ## Architecture
 
@@ -34,21 +34,21 @@ The core solver uses **Counterfactual Regret Minimization (CFR/CFR+)** to learn 
                                                     | React Play vs Bot|
                                                     +------------------+
 
-+------------------+
-| Rust simulator   |
-| benchmark layer  |
-+------------------+
++------------------+       +------------------------------+
+| Rust simulator   | ----> | Optional evaluation benchmark |
+| benchmark layer  |       | Python fallback remains safe  |
++------------------+       +------------------------------+
 ```
 
 Main components:
 
 - `leduc_cfr/poker`: Python Leduc engine with legal actions, betting transitions, terminal utilities, and information-set keys.
 - `leduc_cfr/cfr`: Tabular CFR/CFR+ trainer with regret matching and average strategy extraction.
-- `leduc_cfr/eval`: Expected value, diagnostic nash-gap proxy, seeded head-to-head matchups, and confidence intervals.
+- `leduc_cfr/eval`: Expected value, diagnostic nash-gap proxy, seeded head-to-head matchups, confidence intervals, and optional Rust benchmark integration.
 - `leduc_cfr/neural`: PyTorch MLP trained to imitate the CFR average strategy.
 - `backend`: FastAPI service for playable bot sessions with random, heuristic, CFR, and neural modes.
 - `frontend`: React UI for Play vs Bot.
-- `engine`: Standalone Rust Leduc simulator and benchmark binary.
+- `engine`: Rust Leduc simulator and benchmark binary. It started as standalone benchmark infrastructure and is now optionally invoked by evaluation scripts for simulation throughput validation.
 
 ## Core Algorithms
 
@@ -112,10 +112,10 @@ The numbers below are from the current generated artifacts in `data/`. Exact met
 | Metric | Value |
 |---|---:|
 | Python random hands/sec | 62,684 |
-| Rust random hands/sec | 23,198,403 |
+| Rust random hands/sec | 23,198,402 |
 | Speedup factor | 370.08x |
 | Rust terminal rollouts/sec | 24,459,895 |
-| Rust state transitions/sec | 145,738,516 |
+| Rust state transitions/sec | ~145M |
 | Correctness comparison | Passed against Python trace |
 
 ## Benchmark Summary
@@ -124,7 +124,7 @@ The CFR strategy has learned useful poker behavior in Leduc: it strongly outperf
 
 The neural policy approximates the CFR average strategy with low KL divergence, but it is not a replacement for CFR. Its head-to-head result against CFR is slightly negative, which is expected for an imitation model trained on a small tabular policy.
 
-The Rust simulator demonstrates the systems value of separating high-throughput game simulation from the Python research stack. The standalone benchmark reaches roughly 23.2M random hands/sec and about 145M state transitions/sec while matching deterministic Python traces for legal actions, terminal states, and utility.
+The Rust simulator demonstrates the systems value of separating high-throughput game simulation from the Python research stack. The benchmark reaches roughly 23.2M random hands/sec and about 145M state transitions/sec while matching deterministic Python traces for legal actions, terminal states, and utility. Evaluation defaults to `--engine auto`, which uses Rust benchmark integration when available and falls back to Python safely when it is not. CFR regret updates and game-tree traversal still run in Python.
 
 ## Usage
 
@@ -173,7 +173,9 @@ data/policy_metrics.json
 ### Evaluation
 
 ```bash
-.venv/bin/python scripts/evaluate.py
+.venv/bin/python scripts/evaluate.py --engine auto
+.venv/bin/python scripts/evaluate.py --engine python
+.venv/bin/python scripts/evaluate.py --engine rust
 ```
 
 Outputs:
@@ -181,6 +183,8 @@ Outputs:
 ```text
 data/eval.json
 data/eval.png
+data/rust_benchmark.json
+data/performance_summary.md
 ```
 
 ### Run the App
@@ -250,6 +254,7 @@ data/
 - **Tabular CFR first:** A correct tabular baseline is easier to verify and provides a reliable target for neural approximation.
 - **Neural as imitation:** The PyTorch model compresses the CFR average strategy into a learned policy. It is measured against CFR and not presented as independently superior.
 - **Rust as a separate layer:** The Rust engine is currently a standalone simulator and benchmark. This keeps correctness isolated before introducing bindings or replacing Python traversal.
+- **Optional Rust evaluation acceleration:** Evaluation can call the Rust benchmark path for random rollout throughput and correctness validation. Python remains the fallback and the default-safe execution path.
 - **Proxy metrics are labeled:** The nash-gap upper bound is a diagnostic using full-information best response, not exact exploitability.
 
 ## Limitations
@@ -257,7 +262,7 @@ data/
 - The solved game is Leduc Poker, not full Texas Hold'em.
 - The exploitability-style metric is a proxy, not a mathematically exact exploitability computation.
 - The neural policy is supervised imitation of CFR, not reinforcement learning from self-play.
-- Rust is not yet integrated into CFR training or Python evaluation loops.
+- Rust is not yet integrated into CFR regret updates or training traversal.
 - Matchup results have sampling variance; confidence intervals should be considered when comparing policies.
 
 ## Future Work
