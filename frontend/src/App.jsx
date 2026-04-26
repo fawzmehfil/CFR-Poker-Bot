@@ -81,7 +81,7 @@ function App() {
         <div className="felt">
           <div className="player bot">
             <span>Bot</span>
-            <Card hidden />
+            <Card label={game?.opponent_card || "?"} hidden={!game?.opponent_card} />
           </div>
 
           <div className="board">
@@ -122,4 +122,3 @@ function App() {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
-

@@ -1,6 +1,6 @@
 {
-  "iterations": 200,
-  "cfr_plus": true,
-  "final_avg_utility_p0": -0.09609399602945935,
+  "iterations": 1000,
+  "cfr_plus": false,
+  "final_avg_utility_p0": -0.06758444044043128,
   "infosets": 288
 }

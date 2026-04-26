@@ -40,6 +40,26 @@ class LeducState:
     terminal: bool = False
     folded_player: int | None = None
 
+    def __post_init__(self) -> None:
+        if len(self.deal) != 3 or len(set(self.deal)) != 3 or any(card not in CARDS for card in self.deal):
+            raise ValueError(f"Deal must contain three unique Leduc cards from the deck: {self.deal}")
+        if self.round_index not in (0, 1):
+            raise ValueError(f"round_index must be 0 or 1: {self.round_index}")
+        if self.current_player not in (0, 1):
+            raise ValueError(f"current_player must be 0 or 1: {self.current_player}")
+        if len(self.contributions) != 2 or len(self.round_bets) != 2:
+            raise ValueError("contributions and round_bets must have one entry per player")
+        if any(value < 0 for value in (*self.contributions, *self.round_bets)):
+            raise ValueError("contributions and round_bets cannot be negative")
+        if self.raises_this_round < 0 or self.raises_this_round > MAX_RAISES:
+            raise ValueError(f"raises_this_round must be between 0 and {MAX_RAISES}")
+        if len(self.history) != 2:
+            raise ValueError("history must have one action tuple per betting round")
+        if self.folded_player is not None and self.folded_player not in (0, 1):
+            raise ValueError(f"folded_player must be 0, 1, or None: {self.folded_player}")
+        if self.folded_player is not None and not self.terminal:
+            raise ValueError("A folded hand must be terminal")
+
     @property
     def private_cards(self) -> tuple[str, str]:
         return self.deal[0], self.deal[1]
@@ -53,7 +73,7 @@ class LeducState:
         return self.contributions[0] + self.contributions[1]
 
     def visible_public(self) -> str | None:
-        return self.public_card if self.round_index == 1 else None
+        return self.public_card if self.round_index == 1 or self.terminal else None
 
     def to_call(self, player: int | None = None) -> int:
         player = self.current_player if player is None else player
@@ -160,6 +180,7 @@ class LeducState:
         return f"p{player}|{private}|{public}|r{self.round_index}|{h0}/{h1}"
 
     def public_view(self, human_player: int = 0) -> dict:
+        opponent = 1 - human_player
         return {
             "round": self.round_index,
             "current_player": self.current_player,
@@ -167,6 +188,7 @@ class LeducState:
             "to_call": self.to_call() if not self.terminal else 0,
             "legal_actions": self.legal_actions(),
             "private_card": rank(self.private_cards[human_player]),
+            "opponent_card": rank(self.private_cards[opponent]) if self.terminal else None,
             "public_card": rank(self.public_card) if self.round_index == 1 or self.terminal else None,
             "history": ["".join(self.history[0]), "".join(self.history[1])],
             "terminal": self.terminal,
@@ -190,4 +212,3 @@ class LeducState:
         }
         data.update(kwargs)
         return LeducState(**data)
-

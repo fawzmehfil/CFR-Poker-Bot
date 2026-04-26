@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 import sys
@@ -10,7 +11,10 @@ from leduc_cfr.cfr.trainer import StrategyProfile
 from leduc_cfr.eval.metrics import (
     expected_game_value,
     full_information_best_response_values,
+    head_to_head,
+    heuristic_policy,
     nash_gap_upper_bound,
+    random_policy,
 )
 
 
@@ -18,17 +22,25 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--strategy", default="data/cfr_strategy.json")
     parser.add_argument("--out", default="data/eval.json")
-    parser.add_argument("--plot", default=None)
+    parser.add_argument("--plot", default="data/eval.png")
+    parser.add_argument("--hands", type=int, default=1000)
+    parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
 
     profile = StrategyProfile.load(args.strategy)
     p0_br, p1_br = full_information_best_response_values(profile)
+    cfr_vs_random = head_to_head(profile, random_policy, hands=args.hands, seed=args.seed)
+    cfr_vs_heuristic = head_to_head(profile, heuristic_policy, hands=args.hands, seed=args.seed + 1)
     metrics = {
+        "timestamp": datetime.now(UTC).isoformat(),
         "expected_game_value_p0": expected_game_value(profile),
         "full_information_best_response_p0": p0_br,
         "full_information_best_response_p1": p1_br,
         "nash_gap_upper_bound": nash_gap_upper_bound(profile),
         "infosets": len(profile.strategies),
+        "hands_played": args.hands,
+        "cfr_vs_random": cfr_vs_random,
+        "cfr_vs_heuristic": cfr_vs_heuristic,
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(metrics, indent=2))
@@ -37,14 +49,19 @@ def main() -> None:
     if args.plot:
         from PIL import Image, ImageDraw, ImageFont
 
-        names = ["EV P0", "FI BR P0", "FI BR P1", "Gap UB"]
-        values = [metrics["expected_game_value_p0"], p0_br, p1_br, metrics["nash_gap_upper_bound"]]
+        names = ["EV P0", "vs Random", "vs Heuristic", "Gap UB"]
+        values = [
+            metrics["expected_game_value_p0"],
+            cfr_vs_random["avg_utility"],
+            cfr_vs_heuristic["avg_utility"],
+            metrics["nash_gap_upper_bound"],
+        ]
         width, height = 760, 420
         margin = 62
         image = Image.new("RGB", (width, height), "white")
         draw = ImageDraw.Draw(image)
         font = ImageFont.load_default()
-        draw.text((margin, 22), "Leduc CFR Strategy Evaluation", fill="#172033", font=font)
+        draw.text((margin, 22), f"Leduc CFR Evaluation ({args.hands} simulated hands)", fill="#172033", font=font)
 
         zero_y = height - margin
         max_abs = max(1.0, max(abs(v) for v in values))

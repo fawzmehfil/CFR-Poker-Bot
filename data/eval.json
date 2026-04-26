@@ -1,7 +1,23 @@
 {
-  "expected_game_value_p0": -0.08629834087477846,
-  "full_information_best_response_p0": 2.038480980686352,
-  "full_information_best_response_p1": 2.106492749429389,
-  "nash_gap_upper_bound": 2.0724868650578703,
-  "infosets": 288
+  "timestamp": "2026-04-26T03:08:39.797451+00:00",
+  "expected_game_value_p0": -0.08750380705850856,
+  "full_information_best_response_p0": 2.1003697760717417,
+  "full_information_best_response_p1": 2.1321449170023734,
+  "nash_gap_upper_bound": 2.1162573465370578,
+  "infosets": 288,
+  "hands_played": 1000,
+  "cfr_vs_random": {
+    "hands": 1000,
+    "win_rate": 0.47,
+    "loss_rate": 0.449,
+    "draw_rate": 0.081,
+    "avg_utility": 0.817
+  },
+  "cfr_vs_heuristic": {
+    "hands": 1000,
+    "win_rate": 0.376,
+    "loss_rate": 0.429,
+    "draw_rate": 0.195,
+    "avg_utility": -0.043
+  }
 }
