@@ -1,0 +1,159 @@
+{
+  "hands": 400,
+  "terminal_counts": {
+    "non_showdown": 361,
+    "showdown": 39
+  },
+  "street_actions": {
+    "preflop": {
+      "fold": 225,
+      "call": 281,
+      "bet": 57,
+      "raise": 53,
+      "check": 73,
+      "all-in": 103
+    },
+    "flop": {
+      "check": 156,
+      "bet": 51,
+      "fold": 91,
+      "all-in": 45,
+      "call": 4
+    },
+    "turn": {
+      "check": 57,
+      "all-in": 24,
+      "fold": 38,
+      "bet": 20,
+      "call": 6,
+      "raise": 3
+    },
+    "river": {
+      "check": 16,
+      "bet": 9,
+      "call": 10,
+      "all-in": 11,
+      "fold": 7,
+      "raise": 1
+    }
+  },
+  "bot_actions": {
+    "heuristic": {
+      "fold": 303,
+      "bet": 23,
+      "check": 181,
+      "call": 247,
+      "raise": 2
+    },
+    "random": {
+      "call": 54,
+      "bet": 114,
+      "raise": 55,
+      "check": 121,
+      "all-in": 183,
+      "fold": 58
+    }
+  },
+  "largest_pots": [
+    {
+      "hand_index": 7,
+      "seed": 10,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    },
+    {
+      "hand_index": 34,
+      "seed": 24,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    },
+    {
+      "hand_index": 40,
+      "seed": 27,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    },
+    {
+      "hand_index": 58,
+      "seed": 36,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    },
+    {
+      "hand_index": 78,
+      "seed": 46,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    },
+    {
+      "hand_index": 88,
+      "seed": 51,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    },
+    {
+      "hand_index": 92,
+      "seed": 53,
+      "pot": 200,
+      "winner": 1,
+      "utilities": {
+        "0": -100,
+        "1": 100
+      }
+    },
+    {
+      "hand_index": 123,
+      "seed": 68,
+      "pot": 200,
+      "winner": null,
+      "utilities": {
+        "0": 0,
+        "1": 0
+      }
+    },
+    {
+      "hand_index": 127,
+      "seed": 70,
+      "pot": 200,
+      "winner": 1,
+      "utilities": {
+        "0": -100,
+        "1": 100
+      }
+    },
+    {
+      "hand_index": 130,
+      "seed": 72,
+      "pot": 200,
+      "winner": 0,
+      "utilities": {
+        "0": 100,
+        "1": -100
+      }
+    }
+  ]
+}

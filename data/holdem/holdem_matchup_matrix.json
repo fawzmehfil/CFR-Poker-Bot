@@ -1,0 +1,208 @@
+{
+  "generated_at": "2026-05-07T03:13:21.704720+00:00",
+  "hands_per_matchup": 50,
+  "duplicate": true,
+  "seed": 7,
+  "bots": [
+    "check_call",
+    "random",
+    "heuristic"
+  ],
+  "matrix": {
+    "check_call": {
+      "check_call": {
+        "total_hands": 100,
+        "total_chips": 0,
+        "bb_per_100": 0.0,
+        "ev_per_hand": 0.0,
+        "win_rate": 0.46,
+        "loss_rate": 0.46,
+        "draw_rate": 0.08,
+        "fold_frequency": 0.0,
+        "call_frequency": 0.125,
+        "raise_frequency": 0.0,
+        "aggression_frequency": 0.0,
+        "showdown_win_rate": 0.5,
+        "non_showdown_winnings": 0,
+        "confidence_interval": [
+          -0.3778873756648516,
+          0.3778873756648516
+        ],
+        "standard_error": 0.192799681461659,
+        "variance": 3.717171717171717
+      },
+      "random": {
+        "total_hands": 100,
+        "total_chips": -432,
+        "bb_per_100": -216.0,
+        "ev_per_hand": -4.32,
+        "win_rate": 0.55,
+        "loss_rate": 0.4,
+        "draw_rate": 0.05,
+        "fold_frequency": 0.0,
+        "call_frequency": 0.636963696369637,
+        "raise_frequency": 0.0,
+        "aggression_frequency": 0.0,
+        "showdown_win_rate": 0.5170454545454546,
+        "non_showdown_winnings": 12,
+        "confidence_interval": [
+          -19.948065061848627,
+          11.308065061848627
+        ],
+        "standard_error": 7.97350258257583,
+        "variance": 6357.674343434343
+      },
+      "heuristic": {
+        "total_hands": 100,
+        "total_chips": -74,
+        "bb_per_100": -37.0,
+        "ev_per_hand": -0.74,
+        "win_rate": 0.56,
+        "loss_rate": 0.42,
+        "draw_rate": 0.02,
+        "fold_frequency": 0.0,
+        "call_frequency": 0.2708333333333333,
+        "raise_frequency": 0.0,
+        "aggression_frequency": 0.0,
+        "showdown_win_rate": 0.44871794871794873,
+        "non_showdown_winnings": 22,
+        "confidence_interval": [
+          -1.5118388108270988,
+          0.03183881082709872
+        ],
+        "standard_error": 0.39379531164647896,
+        "variance": 15.507474747474747
+      }
+    },
+    "random": {
+      "check_call": {
+        "total_hands": 100,
+        "total_chips": -11,
+        "bb_per_100": -5.5,
+        "ev_per_hand": -0.11,
+        "win_rate": 0.42,
+        "loss_rate": 0.5,
+        "draw_rate": 0.08,
+        "fold_frequency": 0.04017857142857143,
+        "call_frequency": 0.06696428571428571,
+        "raise_frequency": 0.6339285714285714,
+        "aggression_frequency": 0.6339285714285714,
+        "showdown_win_rate": 0.5054945054945055,
+        "non_showdown_winnings": -9,
+        "confidence_interval": [
+          -16.129083547551474,
+          15.909083547551475
+        ],
+        "standard_error": 8.173001809975242,
+        "variance": 6679.795858585859
+      },
+      "random": {
+        "total_hands": 100,
+        "total_chips": -214,
+        "bb_per_100": -107.0,
+        "ev_per_hand": -2.14,
+        "win_rate": 0.48,
+        "loss_rate": 0.52,
+        "draw_rate": 0.0,
+        "fold_frequency": 0.21374045801526717,
+        "call_frequency": 0.19083969465648856,
+        "raise_frequency": 0.549618320610687,
+        "aggression_frequency": 0.549618320610687,
+        "showdown_win_rate": 0.4782608695652174,
+        "non_showdown_winnings": -14,
+        "confidence_interval": [
+          -15.498913631751876,
+          11.218913631751875
+        ],
+        "standard_error": 6.815772261097895,
+        "variance": 4645.475151515151
+      },
+      "heuristic": {
+        "total_hands": 100,
+        "total_chips": -416,
+        "bb_per_100": -208.0,
+        "ev_per_hand": -4.16,
+        "win_rate": 0.79,
+        "loss_rate": 0.21,
+        "draw_rate": 0.0,
+        "fold_frequency": 0.07784431137724551,
+        "call_frequency": 0.059880239520958084,
+        "raise_frequency": 0.6227544910179641,
+        "aggression_frequency": 0.6227544910179641,
+        "showdown_win_rate": 0.3333333333333333,
+        "non_showdown_winnings": 178,
+        "confidence_interval": [
+          -10.355354003011147,
+          2.0353540030111477
+        ],
+        "standard_error": 3.1608948994954837,
+        "variance": 999.1256565656565
+      }
+    },
+    "heuristic": {
+      "check_call": {
+        "total_hands": 100,
+        "total_chips": 88,
+        "bb_per_100": 44.0,
+        "ev_per_hand": 0.88,
+        "win_rate": 0.43,
+        "loss_rate": 0.56,
+        "draw_rate": 0.01,
+        "fold_frequency": 0.05202312138728324,
+        "call_frequency": 0.08959537572254335,
+        "raise_frequency": 0.14739884393063585,
+        "aggression_frequency": 0.14739884393063585,
+        "showdown_win_rate": 0.5304878048780488,
+        "non_showdown_winnings": -18,
+        "confidence_interval": [
+          -0.027117941169680138,
+          1.7871179411696803
+        ],
+        "standard_error": 0.46281527610697965,
+        "variance": 21.41979797979798
+      },
+      "random": {
+        "total_hands": 100,
+        "total_chips": 471,
+        "bb_per_100": 235.5,
+        "ev_per_hand": 4.71,
+        "win_rate": 0.29,
+        "loss_rate": 0.7,
+        "draw_rate": 0.01,
+        "fold_frequency": 0.3815028901734104,
+        "call_frequency": 0.3468208092485549,
+        "raise_frequency": 0.028901734104046242,
+        "aggression_frequency": 0.028901734104046242,
+        "showdown_win_rate": 0.6785714285714286,
+        "non_showdown_winnings": -115,
+        "confidence_interval": [
+          -1.4666341406525563,
+          10.886634140652557
+        ],
+        "standard_error": 3.151343949312529,
+        "variance": 993.0968686868687
+      },
+      "heuristic": {
+        "total_hands": 100,
+        "total_chips": 0,
+        "bb_per_100": 0.0,
+        "ev_per_hand": 0.0,
+        "win_rate": 0.49,
+        "loss_rate": 0.49,
+        "draw_rate": 0.02,
+        "fold_frequency": 0.07570977917981073,
+        "call_frequency": 0.1640378548895899,
+        "raise_frequency": 0.08517350157728706,
+        "aggression_frequency": 0.08517350157728706,
+        "showdown_win_rate": 0.5,
+        "non_showdown_winnings": 0,
+        "confidence_interval": [
+          -0.5136803234965057,
+          0.5136803234965057
+        ],
+        "standard_error": 0.26208179770229884,
+        "variance": 6.8686868686868685
+      }
+    }
+  }
+}

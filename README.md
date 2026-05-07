@@ -150,6 +150,20 @@ Sample benchmark from `data/holdem_benchmark.json` on this machine with `--hands
 | State transitions/sec | 18,634 | 2,139,985 |
 | Showdown evaluations/sec | 7,454 | 237,505 |
 
+### Texas Hold'em Bot Evaluation
+
+The Hold'em evaluation harness measures bot strength with duplicate seeded matches instead of one-off demos. In duplicate mode, each generated deal is played twice with mirrored bot seats, so both bots see both sides of the same card distribution. This reduces card-deal variance and makes small differences less misleading.
+
+Primary metrics:
+
+- **EV/hand:** average chips won per evaluated hand.
+- **bb/100:** EV normalized to big blinds per 100 hands, the standard poker win-rate unit.
+- **Confidence interval and standard error:** uncertainty around EV/hand. Wide intervals mean the sample is too noisy to support strong claims.
+- **Action frequencies:** fold, call, raise, and aggression frequencies for diagnosing style.
+- **Showdown and non-showdown results:** separates hands won at showdown from pots won before showdown.
+
+The reports are measurement tools, not proof of strategic strength. Small samples are useful for smoke tests and demos; larger duplicate batches with narrow confidence intervals are needed before comparing bots seriously.
+
 ## Benchmark Summary
 
 The CFR strategy has learned useful poker behavior in Leduc: it strongly outperforms a random policy by average utility, while performance against the heuristic baseline is positive but noisy. The nash-gap value is best interpreted as a convergence diagnostic rather than exact exploitability.
@@ -251,6 +265,36 @@ cd engine
 cargo run --release --bin holdem_bench -- 10000 7
 ```
 
+### Texas Hold'em Evaluation Commands
+
+Run a duplicate bot-vs-bot evaluation:
+
+```bash
+.venv/bin/python scripts/evaluate_holdem.py --bot-a heuristic --bot-b random --hands 1000 --seed 7
+```
+
+Run a matchup matrix:
+
+```bash
+.venv/bin/python scripts/holdem_matchup_matrix.py --bots check_call,random,heuristic --hands 500 --seed 7
+```
+
+Analyze stored hand histories:
+
+```bash
+.venv/bin/python scripts/analyze_hand_histories.py --histories data/holdem/holdem_hand_histories.json
+```
+
+Outputs:
+
+```text
+data/holdem/holdem_eval.json
+data/holdem/holdem_hand_histories.json
+data/holdem/holdem_matchup_matrix.json
+data/holdem/holdem_eval_summary.md
+data/holdem/holdem_eval.png
+```
+
 ### Run the App
 
 Terminal 1:
@@ -299,11 +343,15 @@ frontend/
   src/styles.css             UI styling
 leduc_cfr/
   holdem/engine.py           Python heads-up Texas Hold'em engine
+  holdem_eval/               Hold'em bot evaluation harness
   poker/leduc.py             Python Leduc engine
   cfr/trainer.py             CFR/CFR+ solver
   eval/metrics.py            Evaluation and matchup metrics
   neural/policy.py           PyTorch policy approximation
 scripts/
+  evaluate_holdem.py         Hold'em bot-vs-bot evaluation CLI
+  holdem_matchup_matrix.py   Hold'em matchup matrix CLI
+  analyze_hand_histories.py  Hold'em hand-history analysis CLI
   simulate_holdem.py         Hold'em simulation CLI
   benchmark_holdem.py        Python/Rust Hold'em benchmark CLI
   verify_holdem_engine.py    Hold'em verifier and trace equivalence CLI
@@ -316,6 +364,7 @@ tests/
   test_eval.py               Evaluation tests
   test_policy.py             Neural dataset/training tests
   test_backend.py            API smoke tests
+  test_holdem_eval.py        Hold'em evaluation harness tests
   test_holdem.py             Python Hold'em engine tests
   test_holdem_rust_equivalence.py Python/Rust Hold'em trace comparison
 data/
@@ -329,6 +378,7 @@ data/
 - **Neural as imitation:** The PyTorch model compresses the CFR average strategy into a learned policy. It is measured against CFR and not presented as independently superior.
 - **Rust as a performance layer:** Rust now handles standalone simulation benchmarks and full Leduc CFR traversal. Python remains the orchestration and fallback layer.
 - **Hold'em engine support, not Hold'em CFR:** The Hold'em implementation focuses on correct deterministic state transitions and evaluation. It intentionally uses a bounded action abstraction suitable for future search/CFR experiments instead of claiming no-limit strategic strength.
+- **Duplicate Hold'em evaluation:** Bot comparisons use mirrored seeded deals by default so measured differences are less dominated by card distribution variance.
 - **Optional Rust evaluation acceleration:** Evaluation can call the Rust benchmark path for random rollout throughput and correctness validation. Python remains the fallback and the default-safe execution path.
 - **Selection is explicit:** Best-gap selection optimizes the convergence proxy; heuristic and balanced modes are available when exploitative matchup performance is the priority.
 - **Proxy metrics are labeled:** The nash-gap upper bound is a diagnostic using full-information best response, not exact exploitability.
@@ -337,6 +387,7 @@ data/
 
 - The solved game is Leduc Poker. The Texas Hold'em code is engine support and benchmark infrastructure, not a solved Hold'em strategy.
 - The Hold'em betting model exposes a discrete bet/raise abstraction plus all-in support; it is not a complete live no-limit sizing tree.
+- Hold'em bot rankings are sample estimates. Use larger duplicate batches and confidence intervals before treating a bb/100 difference as meaningful.
 - The exploitability-style metric is a proxy, not a mathematically exact exploitability computation.
 - The neural policy is supervised imitation of CFR, not reinforcement learning from self-play.
 - Rust CFR traversal is standalone and file-based; it is not yet exposed as an in-process Python extension.
