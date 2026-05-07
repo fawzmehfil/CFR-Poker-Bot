@@ -2,9 +2,9 @@
   "seed": 7,
   "python": {
     "hands": 2000,
-    "random_hands_per_sec": 6761.208075698438,
-    "state_transitions_per_sec": 18633.889456624896,
-    "showdown_evaluations_per_sec": 7454.476270967295,
+    "random_hands_per_sec": 7685.160729329858,
+    "state_transitions_per_sec": 21180.30297003309,
+    "showdown_evaluations_per_sec": 7929.842438222194,
     "avg_utility_p0": -1.603,
     "avg_transitions_per_hand": 2.756
   },
@@ -12,8 +12,8 @@
     "available": true,
     "hands": 10000,
     "seed": 7,
-    "random_hands_per_sec": 131485.96,
-    "state_transitions_per_sec": 2139984.71,
-    "showdown_evaluations_per_sec": 237504.79
+    "random_hands_per_sec": 163298.86,
+    "state_transitions_per_sec": 2160418.57,
+    "showdown_evaluations_per_sec": 257627.19
   }
 }

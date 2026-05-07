@@ -6,6 +6,7 @@ import "./styles.css";
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const LABELS = { k: "Check", b: "Bet", c: "Call", r: "Raise", f: "Fold" };
 const HOLDEM_LABELS = { fold: "Fold", check: "Check", call: "Call", bet: "Bet", raise: "Raise", "all-in": "All-in" };
+const STREET_LABELS = { preflop: "Preflop", flop: "Flop", turn: "Turn", river: "River", showdown: "Showdown" };
 const SUITS = {
   h: { symbol: "♥", name: "heart" },
   d: { symbol: "♦", name: "diamond" },
@@ -76,6 +77,26 @@ function actionLabel(mode, action) {
   return mode === "holdem" ? HOLDEM_LABELS[action] || action : LABELS[action] || action;
 }
 
+function formatHistoryToken(mode, token) {
+  if (!token) return "";
+  if (mode !== "holdem") return actionLabel(mode, token);
+  const [street, player, action, amount] = token.split(":");
+  const actor = player === "p0" ? "You" : "Bot";
+  const label = actionLabel(mode, action);
+  const chipText = Number(amount) > 0 ? ` ${amount}` : "";
+  return `${STREET_LABELS[street] || street}: ${actor} ${label}${chipText}`;
+}
+
+function formatError(err) {
+  const text = String(err?.message || err || "");
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.detail || text;
+  } catch {
+    return text;
+  }
+}
+
 function actionTone(action) {
   if (action === "f" || action === "fold") return "danger";
   if (action === "r" || action === "raise" || action === "bet" || action === "b") return "raise";
@@ -98,7 +119,7 @@ function App() {
       if (!res.ok) throw new Error(await res.text());
       setGame(await res.json());
     } catch (err) {
-      setError(String(err.message || err));
+      setError(formatError(err));
     } finally {
       setLoading(false);
     }
@@ -119,7 +140,7 @@ function App() {
       if (!res.ok) throw new Error(await res.text());
       setGame(await res.json());
     } catch (err) {
-      setError(String(err.message || err));
+      setError(formatError(err));
     } finally {
       setLoading(false);
     }
@@ -133,21 +154,31 @@ function App() {
     if (!game) return "Starting table...";
     if (mode === "holdem") {
       if (game.terminal) return game.result || "Hand complete";
-      return game.current_player === 0 ? "Your turn" : "Bot thinking";
+      return game.current_player === 0 ? "Your decision" : "Bot thinking";
     }
     if (game.terminal) {
       if (game.utility > 0) return `You win ${game.utility} chips`;
       if (game.utility < 0) return `Bot wins ${Math.abs(game.utility)} chips`;
       return "Hand ends in a draw";
     }
-    return game.current_player === 0 ? "Your turn" : "Bot thinking";
+    return game.current_player === 0 ? "Your decision" : "Bot thinking";
   }, [game]);
 
-  const street = mode === "holdem" ? game?.street || "preflop" : `round ${game ? game.round + 1 : 1}`;
-  const history = (game?.history || ["", ""]).filter(Boolean).join(" / ") || "No actions yet";
+  const street = mode === "holdem" ? STREET_LABELS[game?.street] || "Preflop" : `Round ${game ? game.round + 1 : 1}`;
+  const historyItems = (game?.history || []).filter(Boolean).map((item) => formatHistoryToken(mode, item));
   const legalActions = game?.legal_actions || [];
   const heroStack = game?.stacks?.[0];
   const botStack = game?.stacks?.[1];
+  const isHumanTurn = Boolean(game && !game.terminal && game.current_player === 0);
+  const positionText =
+    mode === "holdem" && game
+      ? `Button ${game.button === 0 ? "You" : "Bot"} | SB ${
+          game.small_blind_player === 0 ? "You" : "Bot"
+        } | BB ${game.big_blind_player === 0 ? "You" : "Bot"}`
+      : game?.bot_mode
+        ? `Bot mode ${game.bot_mode}`
+        : "Bot ready";
+  const stackText = mode === "holdem" ? `Stacks You ${heroStack ?? 0} | Bot ${botStack ?? 0}` : `Pot ${game?.pot ?? 0}`;
 
   return (
     <main>
@@ -157,7 +188,7 @@ function App() {
             <Spade size={24} />
             <div>
               <h1>{mode === "holdem" ? "Texas Hold'em" : "Leduc CFR Poker"}</h1>
-              <p>{mode === "holdem" ? "Fixed-limit hand vs heuristic bot" : "Compact CFR+ training table"}</p>
+              <p>{mode === "holdem" ? "Heads-up Hold'em vs heuristic bot" : "Compact CFR+ training table"}</p>
             </div>
           </div>
           <div className="headerActions">
@@ -198,6 +229,7 @@ function App() {
 
               <div className="tableCenter holdemBoard">
                 <div className="potColumn">
+                  <span className="metricLabel">To call</span>
                   <Chips amount={game?.to_call ?? 0} muted />
                   <div className="pot">Pot {game?.pot ?? 0}</div>
                 </div>
@@ -213,8 +245,8 @@ function App() {
                 name="You"
                 stack={heroStack ?? 0}
                 cards={game?.hero_cards || ["?", "?"]}
-                className="humanSeat active"
-                note={game?.terminal ? "Hand complete" : "Decision seat"}
+                className={`humanSeat ${isHumanTurn ? "active" : ""}`}
+                note={game?.terminal ? "Hand complete" : isHumanTurn ? "Your action" : "Waiting"}
               />
             </>
           ) : (
@@ -229,6 +261,7 @@ function App() {
 
               <div className="tableCenter leducBoard">
                 <div className="potColumn">
+                  <span className="metricLabel">To call</span>
                   <Chips amount={game?.to_call ?? 0} muted />
                   <div className="pot">Pot {game?.pot ?? 0}</div>
                 </div>
@@ -241,8 +274,8 @@ function App() {
               <PlayerSeat
                 name="You"
                 cards={[game?.private_card || "?"]}
-                className="humanSeat active"
-                note={game?.terminal ? "Hand complete" : "Your private card"}
+                className={`humanSeat ${isHumanTurn ? "active" : ""}`}
+                note={game?.terminal ? "Hand complete" : isHumanTurn ? "Your private card" : "Waiting"}
               />
             </>
           )}
@@ -251,8 +284,8 @@ function App() {
         <div className="playDock">
           <div className="handInfo">
             <span className="street">{street}</span>
-            <span>To call {game?.to_call ?? 0}</span>
-            <span>{history}</span>
+            <span>{positionText}</span>
+            <span>{stackText}</span>
           </div>
 
           <div className="controls">
@@ -276,6 +309,19 @@ function App() {
               <div className="waiting">{loading ? "Dealing..." : "Waiting for bot..."}</div>
             )}
           </div>
+        </div>
+
+        <div className="historyPanel" aria-label="Hand history">
+          <div className="historyTitle">Hand History</div>
+          {historyItems.length ? (
+            <ol>
+              {historyItems.slice(-8).map((item, index) => (
+                <li key={`${item}-${index}`}>{item}</li>
+              ))}
+            </ol>
+          ) : (
+            <p>No actions yet.</p>
+          )}
         </div>
 
         {error && <div className="error">{error}</div>}

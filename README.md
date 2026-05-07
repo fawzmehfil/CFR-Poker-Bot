@@ -146,9 +146,9 @@ Sample benchmark from `data/holdem_benchmark.json` on this machine with `--hands
 
 | Metric | Python | Rust |
 |---|---:|---:|
-| Random hands/sec | 6,761 | 131,486 |
-| State transitions/sec | 18,634 | 2,139,985 |
-| Showdown evaluations/sec | 7,454 | 237,505 |
+| Random hands/sec | 7,685 | 163,299 |
+| State transitions/sec | 21,180 | 2,160,419 |
+| Showdown evaluations/sec | 7,930 | 257,627 |
 
 ### Texas Hold'em Bot Evaluation
 

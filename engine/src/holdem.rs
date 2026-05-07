@@ -453,11 +453,16 @@ impl HoldemState {
             stacks[1 - folded] += self.pot();
             return Ok(stacks);
         }
+        let matched = self.contributions[0].min(self.contributions[1]);
+        let contested = matched * 2;
+        for (player, stack) in stacks.iter_mut().enumerate() {
+            *stack += self.contributions[player] - matched;
+        }
         match self.showdown_winner()? {
-            Some(winner) => stacks[winner] += self.pot(),
+            Some(winner) => stacks[winner] += contested,
             None => {
-                stacks[0] += self.pot() / 2 + self.pot() % 2;
-                stacks[1] += self.pot() / 2;
+                stacks[0] += contested / 2 + contested % 2;
+                stacks[1] += contested / 2;
             }
         }
         Ok(stacks)
@@ -664,5 +669,24 @@ mod tests {
         assert_eq!(state.showdown_winner().unwrap(), Some(0));
         assert_eq!(state.final_stacks().unwrap(), [8, 96]);
         assert_eq!(state.utility(0).unwrap(), 4);
+    }
+
+    #[test]
+    fn showdown_returns_uncalled_all_in_overage() {
+        let mut state = HoldemState::new(
+            Vec::new(),
+            [[c("As"), c("Kd")], [c("Qh"), c("Qd")]],
+        );
+        state.board = vec![c("2c"), c("7d"), c("9s"), c("Tc"), c("3h")];
+        state.street = Street::Showdown;
+        state.terminal = true;
+        state.contributions = [10, 5];
+        state.stacks = [90, 95];
+        state.street_bets = [0, 0];
+
+        assert_eq!(state.showdown_winner().unwrap(), Some(1));
+        assert_eq!(state.final_stacks().unwrap(), [95, 105]);
+        assert_eq!(state.utility(0).unwrap(), -5);
+        assert_eq!(state.utility(1).unwrap(), 5);
     }
 }

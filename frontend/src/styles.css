@@ -41,8 +41,8 @@ main {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 18% 18%, rgba(60, 132, 121, 0.16), transparent 28%),
-    radial-gradient(circle at 82% 72%, rgba(245, 158, 11, 0.12), transparent 30%),
+    radial-gradient(circle at 18% 18%, rgba(62, 131, 122, 0.16), transparent 28%),
+    radial-gradient(circle at 82% 72%, rgba(194, 139, 54, 0.12), transparent 30%),
     linear-gradient(145deg, #101820, #080b10 56%, #15110d);
 }
 
@@ -74,8 +74,8 @@ header {
 
 .brand > svg {
   flex: 0 0 auto;
-  color: #8ddaa6;
-  filter: drop-shadow(0 0 10px rgba(141, 218, 166, 0.28));
+  color: #99d8ad;
+  filter: drop-shadow(0 0 10px rgba(153, 216, 173, 0.22));
 }
 
 h1 {
@@ -132,7 +132,7 @@ p {
   padding: 34px 52px 28px;
   isolation: isolate;
   background:
-    radial-gradient(ellipse at center, rgba(113, 194, 113, 0.52) 0%, rgba(40, 126, 66, 0.94) 48%, rgba(18, 83, 48, 0.98) 70%, transparent 71%),
+    radial-gradient(ellipse at center, rgba(111, 178, 117, 0.52) 0%, rgba(38, 111, 66, 0.94) 48%, rgba(18, 77, 49, 0.98) 70%, transparent 71%),
     radial-gradient(ellipse at center, #121519 0%, #090b0f 72%);
 }
 
@@ -231,7 +231,7 @@ p {
 }
 
 .seatPlate small {
-  color: #a7f3d0;
+  color: #b7e9ca;
   font-size: 12px;
   font-weight: 800;
 }
@@ -260,7 +260,17 @@ p {
 .potColumn {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 7px;
+}
+
+.metricLabel {
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #d7dee8;
+  background: rgba(5, 10, 12, 0.5);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .pot,
@@ -417,7 +427,7 @@ p {
 
 .handInfo .street {
   color: #102018;
-  background: #9ee6b0;
+  background: #a8dfb6;
 }
 
 .controls {
@@ -485,6 +495,46 @@ p {
   border-radius: 8px;
   color: #fecaca;
   background: rgba(127, 29, 29, 0.38);
+}
+
+.historyPanel {
+  display: grid;
+  gap: 8px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #d6dee8;
+  background: rgba(7, 10, 14, 0.84);
+}
+
+.historyTitle {
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.historyPanel ol {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  list-style: none;
+}
+
+.historyPanel li,
+.historyPanel p {
+  margin: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 @media (max-width: 820px) {

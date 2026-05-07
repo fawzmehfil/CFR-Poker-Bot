@@ -170,6 +170,24 @@ def test_showdown_winner_gets_pot_minus_contribution():
     assert state.utility(1) == -10
 
 
+def test_showdown_returns_uncalled_all_in_overage():
+    state = HoldemState(
+        deck_cards=(),
+        hole_cards=((C("As"), C("Kd")), (C("Qh"), C("Qd"))),
+        board=(C("2c"), C("7d"), C("9s"), C("Tc"), C("3h")),
+        street="showdown",
+        terminal=True,
+        contributions=(10, 5),
+        stacks=(90, 95),
+        street_bets=(0, 0),
+    )
+
+    assert state.showdown_winner() == 1
+    assert state.final_stacks() == (95, 105)
+    assert state.utility(0) == -5
+    assert state.utility(1) == 5
+
+
 def test_showdown_tie_splits_pot_with_odd_chip_to_player_zero():
     state = HoldemState(
         deck_cards=(),

@@ -237,12 +237,15 @@ class HoldemState:
             stacks[1 - self.folded_player] += self.pot
             return tuple(stacks)
 
+        contested = min(self.contributions) * 2
+        for player, contribution in enumerate(self.contributions):
+            stacks[player] += contribution - min(self.contributions)
         winner = self.showdown_winner()
         if winner is None:
-            stacks[0] += self.pot // 2 + self.pot % 2
-            stacks[1] += self.pot // 2
+            stacks[0] += contested // 2 + contested % 2
+            stacks[1] += contested // 2
         else:
-            stacks[winner] += self.pot
+            stacks[winner] += contested
         return tuple(stacks)
 
     def utility(self, player: int) -> int:
