@@ -5,14 +5,86 @@ import "./styles.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const LABELS = { k: "Check", b: "Bet", c: "Call", r: "Raise", f: "Fold" };
-const HOLDEM_LABELS = { fold: "Fold", check: "Check", call: "Call", bet: "Bet", raise: "Raise" };
+const HOLDEM_LABELS = { fold: "Fold", check: "Check", call: "Call", bet: "Bet", raise: "Raise", "all-in": "All-in" };
+const SUITS = {
+  h: { symbol: "♥", name: "heart" },
+  d: { symbol: "♦", name: "diamond" },
+  c: { symbol: "♣", name: "club" },
+  s: { symbol: "♠", name: "spade" },
+};
+const RANKS = { T: "10" };
 
-function Card({ label, hidden = false }) {
-  return <div className={`card ${hidden ? "hidden" : ""}`}>{hidden ? "?" : label}</div>;
+function parseCard(label = "") {
+  if (label.length < 2) return { rank: label, suit: null };
+  const suitKey = label.at(-1);
+  const suit = SUITS[suitKey];
+  if (!suit) return { rank: label, suit: null };
+  return { rank: RANKS[label.slice(0, -1)] || label.slice(0, -1), suit };
+}
+
+function Card({ label, hidden = false, placeholder = "Board" }) {
+  const card = parseCard(label);
+  const isRed = card.suit?.name === "heart" || card.suit?.name === "diamond";
+
+  if (hidden) {
+    return (
+      <div className="card hidden">
+        <span>{label || "?"}</span>
+      </div>
+    );
+  }
+
+  if (!label) {
+    return <div className="card empty">{placeholder}</div>;
+  }
+
+  return (
+    <div className={`card ${isRed ? "red" : "black"}`}>
+      <span className="rank">{card.rank}</span>
+      {card.suit && <span className="suit">{card.suit.symbol}</span>}
+    </div>
+  );
+}
+
+function Chips({ amount, muted = false }) {
+  return (
+    <div className={`chipStack ${muted ? "muted" : ""}`} aria-label={`${amount} chips`}>
+      <span className="chipIcon" />
+      <strong>{amount}</strong>
+    </div>
+  );
+}
+
+function PlayerSeat({ name, stack, cards, hiddenCards = false, className = "", note }) {
+  return (
+    <div className={`playerSeat ${className}`}>
+      <div className="seatCards">
+        {cards.map((card, index) => (
+          <Card key={`${card || "hidden"}-${index}`} label={card} hidden={hiddenCards || card === "?"} />
+        ))}
+      </div>
+      <div className="seatPlate">
+        <span>{name}</span>
+        {stack !== undefined && <strong>{stack}</strong>}
+        {note && <small>{note}</small>}
+      </div>
+    </div>
+  );
+}
+
+function actionLabel(mode, action) {
+  return mode === "holdem" ? HOLDEM_LABELS[action] || action : LABELS[action] || action;
+}
+
+function actionTone(action) {
+  if (action === "f" || action === "fold") return "danger";
+  if (action === "r" || action === "raise" || action === "bet" || action === "b") return "raise";
+  if (action === "all-in") return "allIn";
+  return "call";
 }
 
 function App() {
-  const [mode, setMode] = useState("leduc");
+  const [mode, setMode] = useState("holdem");
   const [game, setGame] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,6 +143,12 @@ function App() {
     return game.current_player === 0 ? "Your turn" : "Bot thinking";
   }, [game]);
 
+  const street = mode === "holdem" ? game?.street || "preflop" : `round ${game ? game.round + 1 : 1}`;
+  const history = (game?.history || ["", ""]).filter(Boolean).join(" / ") || "No actions yet";
+  const legalActions = game?.legal_actions || [];
+  const heroStack = game?.stacks?.[0];
+  const botStack = game?.stacks?.[1];
+
   return (
     <main>
       <section className="table">
@@ -79,7 +157,7 @@ function App() {
             <Spade size={24} />
             <div>
               <h1>{mode === "holdem" ? "Texas Hold'em" : "Leduc CFR Poker"}</h1>
-              <p>{mode === "holdem" ? "Playable fixed-limit demo vs heuristic bot" : "Play vs a tabular CFR+ bot"}</p>
+              <p>{mode === "holdem" ? "Fixed-limit hand vs heuristic bot" : "Compact CFR+ training table"}</p>
             </div>
           </div>
           <div className="headerActions">
@@ -101,74 +179,103 @@ function App() {
           </div>
         </header>
 
-        {mode === "holdem" ? (
-          <div className="felt holdemFelt">
-            <div className="player bot">
-              <span>Bot {game ? `(${game.stacks?.[1] ?? 0})` : ""}</span>
-              <div className="cardsRow">
-                {(game?.bot_cards || ["?", "?"]).map((card, index) => (
-                  <Card key={index} label={card} hidden={card === "?"} />
-                ))}
-              </div>
-            </div>
-
-            <div className="board holdemBoard">
-              <div className="pot">Pot {game?.pot ?? 0}</div>
-              <div className="cardsRow boardCards">
-                {Array.from({ length: 5 }).map((_, index) => {
-                  const label = game?.board?.[index] || "";
-                  return <Card key={index} label={label || "Board"} hidden={!label} />;
-                })}
-              </div>
-              <div className="status">{status}</div>
-            </div>
-
-            <div className="player human">
-              <span>You {game ? `(${game.stacks?.[0] ?? 0})` : ""}</span>
-              <div className="cardsRow">
-                {(game?.hero_cards || ["?", "?"]).map((card, index) => (
-                  <Card key={index} label={card} />
-                ))}
-              </div>
-            </div>
+        <div className={`felt ${mode === "holdem" ? "holdemFelt" : "leducFelt"}`}>
+          <div className="feltRail" />
+          <div className="feltLogo">
+            <Spade size={44} />
+            <span>CFR Poker</span>
           </div>
-        ) : (
-          <div className="felt">
-            <div className="player bot">
-              <span>Bot</span>
-              <Card label={game?.opponent_card || "?"} hidden={!game?.opponent_card} />
-            </div>
 
-            <div className="board">
-              <div className="pot">Pot {game?.pot ?? 0}</div>
-              <Card label={game?.public_card || "Public"} hidden={!game?.public_card} />
-              <div className="status">{status}</div>
-            </div>
+          {mode === "holdem" ? (
+            <>
+              <PlayerSeat
+                name="Bot"
+                stack={botStack ?? 0}
+                cards={game?.bot_cards || ["?", "?"]}
+                className="botSeat"
+                note="Opponent"
+              />
 
-            <div className="player human">
-              <span>You</span>
-              <Card label={game?.private_card || "?"} />
-            </div>
-          </div>
-        )}
+              <div className="tableCenter holdemBoard">
+                <div className="potColumn">
+                  <Chips amount={game?.to_call ?? 0} muted />
+                  <div className="pot">Pot {game?.pot ?? 0}</div>
+                </div>
+                <div className={`status ${game?.terminal ? "complete" : ""}`}>{status}</div>
+                <div className="cardsRow boardCards">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Card key={index} label={game?.board?.[index] || ""} placeholder="Board" />
+                  ))}
+                </div>
+              </div>
 
-        <div className="controls">
-          {(game?.legal_actions || []).map((action) => (
-            <button key={action} onClick={() => act(action)} disabled={loading || game?.terminal}>
-              {mode === "holdem" ? HOLDEM_LABELS[action] : LABELS[action]}
-            </button>
-          ))}
-          {game?.terminal && (
-            <button className="primary" onClick={() => newGame()} disabled={loading}>
-              New Hand
-            </button>
+              <PlayerSeat
+                name="You"
+                stack={heroStack ?? 0}
+                cards={game?.hero_cards || ["?", "?"]}
+                className="humanSeat active"
+                note={game?.terminal ? "Hand complete" : "Decision seat"}
+              />
+            </>
+          ) : (
+            <>
+              <PlayerSeat
+                name="Bot"
+                cards={[game?.opponent_card || "?"]}
+                hiddenCards={!game?.opponent_card}
+                className="botSeat"
+                note="Reveals at showdown"
+              />
+
+              <div className="tableCenter leducBoard">
+                <div className="potColumn">
+                  <Chips amount={game?.to_call ?? 0} muted />
+                  <div className="pot">Pot {game?.pot ?? 0}</div>
+                </div>
+                <div className={`status ${game?.terminal ? "complete" : ""}`}>{status}</div>
+                <div className="cardsRow boardCards">
+                  <Card label={game?.public_card || ""} placeholder="Public" />
+                </div>
+              </div>
+
+              <PlayerSeat
+                name="You"
+                cards={[game?.private_card || "?"]}
+                className="humanSeat active"
+                note={game?.terminal ? "Hand complete" : "Your private card"}
+              />
+            </>
           )}
         </div>
 
-        <div className="meta">
-          <span>{mode === "holdem" ? `Street ${game?.street || "preflop"}` : `Round ${game ? game.round + 1 : 1}`}</span>
-          <span>To call {game?.to_call ?? 0}</span>
-          <span>History {(game?.history || ["", ""]).join(" / ") || "-"}</span>
+        <div className="playDock">
+          <div className="handInfo">
+            <span className="street">{street}</span>
+            <span>To call {game?.to_call ?? 0}</span>
+            <span>{history}</span>
+          </div>
+
+          <div className="controls">
+            {legalActions.map((action) => (
+              <button
+                key={action}
+                className={`actionButton ${actionTone(action)}`}
+                onClick={() => act(action)}
+                disabled={loading || game?.terminal}
+              >
+                {actionLabel(mode, action)}
+                {action === "call" || action === "c" ? <span>{game?.to_call ?? 0}</span> : null}
+              </button>
+            ))}
+            {game?.terminal && (
+              <button className="primary" onClick={() => newGame()} disabled={loading}>
+                New Hand
+              </button>
+            )}
+            {!game?.terminal && legalActions.length === 0 && (
+              <div className="waiting">{loading ? "Dealing..." : "Waiting for bot..."}</div>
+            )}
+          </div>
         </div>
 
         {error && <div className="error">{error}</div>}
