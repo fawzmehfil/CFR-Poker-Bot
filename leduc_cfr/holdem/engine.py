@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass, field
 import itertools
 import random
-from collections import Counter
 from typing import Literal
 
-Action = Literal["fold", "check", "call", "bet", "raise"]
+Action = Literal["fold", "check", "call", "bet", "raise", "all-in"]
 Street = Literal["preflop", "flop", "turn", "river", "showdown"]
+ShuffleAlgorithm = Literal["python", "lcg"]
 
 RANKS = "23456789TJQKA"
 SUITS = "cdhs"
@@ -15,7 +16,7 @@ RANK_VALUE = {rank: index + 2 for index, rank in enumerate(RANKS)}
 STARTING_STACK = 100
 SMALL_BLIND = 1
 BIG_BLIND = 2
-MAX_RAISES_PER_STREET = 1
+MAX_RAISES_PER_STREET = 4
 
 
 @dataclass(frozen=True, order=True)
@@ -23,12 +24,16 @@ class Card:
     rank: str
     suit: str
 
+    def __post_init__(self) -> None:
+        if self.rank not in RANKS or self.suit not in SUITS:
+            raise ValueError(f"Invalid card: {self.rank}{self.suit}")
+
     def __str__(self) -> str:
         return f"{self.rank}{self.suit}"
 
     @classmethod
     def parse(cls, value: str) -> "Card":
-        if len(value) != 2 or value[0] not in RANKS or value[1] not in SUITS:
+        if len(value) != 2:
             raise ValueError(f"Invalid card: {value}")
         return cls(value[0], value[1])
 
@@ -37,19 +42,55 @@ def deck() -> list[Card]:
     return [Card(rank, suit) for rank in RANKS for suit in SUITS]
 
 
+class _Lcg:
+    def __init__(self, seed: int) -> None:
+        self.state = seed & ((1 << 64) - 1)
+
+    def next_u64(self) -> int:
+        self.state = (self.state * 6364136223846793005 + 1442695040888963407) & ((1 << 64) - 1)
+        return self.state
+
+    def next_index(self, upper: int) -> int:
+        return self.next_u64() % upper
+
+
+def shuffled_deck(
+    seed: int | None = None,
+    rng: random.Random | None = None,
+    *,
+    algorithm: ShuffleAlgorithm = "python",
+) -> list[Card]:
+    if seed is not None and rng is not None:
+        raise ValueError("Provide either seed or rng, not both")
+    if algorithm == "lcg":
+        if seed is None:
+            raise ValueError("LCG shuffle requires an integer seed")
+        cards = deck()
+        local_rng = _Lcg(seed)
+        for index in range(len(cards) - 1, 0, -1):
+            swap_index = local_rng.next_index(index + 1)
+            cards[index], cards[swap_index] = cards[swap_index], cards[index]
+        return cards
+    local_rng = random.Random(seed) if seed is not None else (rng or random.Random())
+    cards = deck()
+    local_rng.shuffle(cards)
+    return cards
+
+
 def _straight_high(values: set[int]) -> int | None:
-    wheel_values = set(values)
-    if 14 in wheel_values:
-        wheel_values.add(1)
+    straight_values = set(values)
+    if 14 in straight_values:
+        straight_values.add(1)
     for high in range(14, 4, -1):
-        if all(value in wheel_values for value in range(high - 4, high + 1)):
+        if all(value in straight_values for value in range(high - 4, high + 1)):
             return high
     return None
 
 
 def evaluate_hand(cards: list[Card] | tuple[Card, ...]) -> tuple[int, tuple[int, ...]]:
-    if len(cards) < 5:
-        raise ValueError("Hold'em hand evaluation requires at least five cards")
+    """Return a comparable 5-card poker score from 5 to 7 cards."""
+    if not 5 <= len(cards) <= 7:
+        raise ValueError("Hold'em hand evaluation requires five to seven cards")
 
     best: tuple[int, tuple[int, ...]] | None = None
     for combo in itertools.combinations(cards, 5):
@@ -97,6 +138,7 @@ class HoldemState:
     hole_cards: tuple[tuple[Card, Card], tuple[Card, Card]]
     board: tuple[Card, ...] = ()
     street: Street = "preflop"
+    button: int = 0
     current_player: int = 0
     stacks: tuple[int, int] = (STARTING_STACK - SMALL_BLIND, STARTING_STACK - BIG_BLIND)
     contributions: tuple[int, int] = (SMALL_BLIND, BIG_BLIND)
@@ -108,6 +150,14 @@ class HoldemState:
     history: tuple[str, ...] = field(default_factory=tuple)
 
     @property
+    def small_blind_player(self) -> int:
+        return self.button
+
+    @property
+    def big_blind_player(self) -> int:
+        return 1 - self.button
+
+    @property
     def pot(self) -> int:
         return sum(self.contributions)
 
@@ -115,17 +165,34 @@ class HoldemState:
         player = self.current_player if player is None else player
         return max(self.street_bets) - self.street_bets[player]
 
+    def bet_size(self) -> int:
+        return BIG_BLIND if self.street in ("preflop", "flop") else BIG_BLIND * 2
+
     def legal_actions(self) -> tuple[Action, ...]:
-        if self.terminal:
+        if self.terminal or self.stacks[self.current_player] <= 0:
             return ()
-        if self.to_call() > 0:
-            actions: list[Action] = ["fold", "call"]
-            if self.raises_this_street < MAX_RAISES_PER_STREET and self.stacks[self.current_player] > self.to_call():
+
+        to_call = self.to_call()
+        stack = self.stacks[self.current_player]
+        actions: list[Action]
+        if to_call > 0:
+            actions = ["fold", "call"]
+            can_full_raise = (
+                self.raises_this_street < MAX_RAISES_PER_STREET
+                and stack > to_call
+                and stack >= to_call + self.bet_size()
+            )
+            if can_full_raise:
                 actions.append("raise")
+            if stack > 0:
+                actions.append("all-in")
             return tuple(actions)
+
         actions = ["check"]
-        if self.raises_this_street < MAX_RAISES_PER_STREET and self.stacks[self.current_player] > 0:
+        if self.raises_this_street < MAX_RAISES_PER_STREET and stack >= self.bet_size():
             actions.append("bet")
+        if stack > 0:
+            actions.append("all-in")
         return tuple(actions)
 
     def apply(self, action: Action) -> "HoldemState":
@@ -135,44 +202,54 @@ class HoldemState:
             return self._replace(
                 terminal=True,
                 folded_player=self.current_player,
-                history=self.history + (self._history_token(action),),
+                history=self.history + (self._history_token(action, 0),),
             )
 
-        next_state = self
-        if action in ("call", "bet", "raise"):
-            amount = self.to_call(self.current_player)
-            if action in ("bet", "raise"):
-                amount += self.bet_size()
-            next_state = self._commit(amount, action)
-        elif action == "check":
+        if action == "check":
             next_state = self._mark_acted(action)
+        else:
+            if action == "call":
+                amount = self.to_call()
+            elif action in ("bet", "raise"):
+                amount = self.to_call() + self.bet_size()
+            else:
+                amount = self.stacks[self.current_player]
+            next_state = self._commit(amount, action)
 
         if next_state._street_closed():
-            return next_state._advance_street()
+            return next_state._advance_after_closed_betting()
         return next_state._replace(current_player=1 - self.current_player)
 
-    def bet_size(self) -> int:
-        return 2 if self.street in ("preflop", "flop") else 4
-
     def showdown_winner(self) -> int | None:
-        score0 = evaluate_hand(list(self.hole_cards[0] + self.board))
-        score1 = evaluate_hand(list(self.hole_cards[1] + self.board))
+        if len(self.board) != 5:
+            raise ValueError("Showdown winner requires a complete five-card board")
+        score0 = evaluate_hand(self.hole_cards[0] + self.board)
+        score1 = evaluate_hand(self.hole_cards[1] + self.board)
         if score0 == score1:
             return None
         return 0 if score0 > score1 else 1
 
+    def final_stacks(self) -> tuple[int, int]:
+        if not self.terminal:
+            raise ValueError("Final stacks are only defined for terminal states")
+        stacks = list(self.stacks)
+        if self.folded_player is not None:
+            stacks[1 - self.folded_player] += self.pot
+            return tuple(stacks)
+
+        winner = self.showdown_winner()
+        if winner is None:
+            stacks[0] += self.pot // 2 + self.pot % 2
+            stacks[1] += self.pot // 2
+        else:
+            stacks[winner] += self.pot
+        return tuple(stacks)
+
     def utility(self, player: int) -> int:
         if not self.terminal:
             raise ValueError("Utility is only defined for terminal states")
-        if self.folded_player is not None:
-            winner = 1 - self.folded_player
-        else:
-            winner = self.showdown_winner()
-        if winner is None:
-            return self.pot // 2 - self.contributions[player]
-        if winner == player:
-            return self.pot - self.contributions[player]
-        return -self.contributions[player]
+        starting_stack = self.stacks[player] + self.contributions[player]
+        return self.final_stacks()[player] - starting_stack
 
     def public_view(self, human_player: int = 0) -> dict:
         terminal = self.terminal
@@ -192,7 +269,11 @@ class HoldemState:
             "board": [str(card) for card in self.board],
             "pot": self.pot,
             "stacks": list(self.stacks),
+            "final_stacks": list(self.final_stacks()) if terminal else None,
             "street": self.street,
+            "button": self.button,
+            "small_blind_player": self.small_blind_player,
+            "big_blind_player": self.big_blind_player,
             "current_player": self.current_player,
             "legal_actions": list(self.legal_actions()) if self.current_player == human_player else [],
             "to_call": self.to_call(human_player) if not terminal else 0,
@@ -202,62 +283,108 @@ class HoldemState:
             "history": list(self.history),
         }
 
+    def trace_summary(self) -> dict:
+        return {
+            "street": self.street,
+            "current_player": self.current_player,
+            "board": [str(card) for card in self.board],
+            "stacks": list(self.stacks),
+            "contributions": list(self.contributions),
+            "street_bets": list(self.street_bets),
+            "terminal": self.terminal,
+            "folded_player": self.folded_player,
+            "legal_actions": list(self.legal_actions()),
+            "history": list(self.history),
+            "utility_p0": self.utility(0) if self.terminal else 0,
+            "winner": self.showdown_winner() if self.terminal and self.folded_player is None else None,
+        }
+
     def _commit(self, amount: int, action: Action) -> "HoldemState":
         player = self.current_player
         amount = min(amount, self.stacks[player])
+        old_max_bet = max(self.street_bets)
         stacks = list(self.stacks)
         contributions = list(self.contributions)
         street_bets = list(self.street_bets)
-        acted = [False, False] if action in ("bet", "raise") else list(self.acted)
+
         stacks[player] -= amount
         contributions[player] += amount
         street_bets[player] += amount
+
+        new_bet = street_bets[player]
+        is_aggressive = action in ("bet", "raise", "all-in") and new_bet > old_max_bet
+        is_full_raise = is_aggressive and (new_bet - old_max_bet) >= self.bet_size()
+        acted = [False, False] if is_aggressive else list(self.acted)
         acted[player] = True
-        raises = self.raises_this_street + (1 if action in ("bet", "raise") else 0)
+
+        raises = self.raises_this_street + (1 if is_full_raise else 0)
         return self._replace(
             stacks=tuple(stacks),
             contributions=tuple(contributions),
             street_bets=tuple(street_bets),
             acted=tuple(acted),
             raises_this_street=raises,
-            history=self.history + (self._history_token(action),),
+            history=self.history + (self._history_token(action, amount),),
         )
 
     def _mark_acted(self, action: Action) -> "HoldemState":
         acted = list(self.acted)
         acted[self.current_player] = True
-        return self._replace(acted=tuple(acted), history=self.history + (self._history_token(action),))
+        return self._replace(acted=tuple(acted), history=self.history + (self._history_token(action, 0),))
 
     def _street_closed(self) -> bool:
-        return self.street_bets[0] == self.street_bets[1] and all(self.acted)
+        if not all(self.acted):
+            return False
+        return self.street_bets[0] == self.street_bets[1] or any(stack == 0 for stack in self.stacks)
 
-    def _advance_street(self) -> "HoldemState":
+    def _advance_after_closed_betting(self) -> "HoldemState":
+        if any(stack == 0 for stack in self.stacks):
+            return self._runout_to_showdown()
         if self.street == "river":
             return self._replace(terminal=True, street="showdown")
+        return self._advance_street()
+
+    def _advance_street(self) -> "HoldemState":
+        deck_cards = self.deck_cards
+        board = self.board
         if self.street == "preflop":
-            board = self.deck_cards[:3]
-            remaining = self.deck_cards[3:]
+            board = board + deck_cards[:3]
+            deck_cards = deck_cards[3:]
             street: Street = "flop"
         elif self.street == "flop":
-            board = self.board + (self.deck_cards[0],)
-            remaining = self.deck_cards[1:]
+            board = board + (deck_cards[0],)
+            deck_cards = deck_cards[1:]
             street = "turn"
-        else:
-            board = self.board + (self.deck_cards[0],)
-            remaining = self.deck_cards[1:]
+        elif self.street == "turn":
+            board = board + (deck_cards[0],)
+            deck_cards = deck_cards[1:]
             street = "river"
+        else:
+            return self._replace(terminal=True, street="showdown")
+
         return self._replace(
-            deck_cards=remaining,
+            deck_cards=deck_cards,
             board=board,
             street=street,
-            current_player=0,
+            current_player=self.big_blind_player,
             street_bets=(0, 0),
             acted=(False, False),
             raises_this_street=0,
         )
 
-    def _history_token(self, action: Action) -> str:
-        return f"{self.street}:{self.current_player}:{action}"
+    def _runout_to_showdown(self) -> "HoldemState":
+        deck_cards = self.deck_cards
+        board = self.board
+        if self.street == "preflop":
+            needed = 5
+        else:
+            needed = 5 - len(board)
+        board = board + deck_cards[:needed]
+        deck_cards = deck_cards[needed:]
+        return self._replace(deck_cards=deck_cards, board=board, street="showdown", terminal=True)
+
+    def _history_token(self, action: Action, amount: int) -> str:
+        return f"{self.street}:p{self.current_player}:{action}:{amount}"
 
     def _replace(self, **kwargs) -> "HoldemState":
         values = self.__dict__.copy()
@@ -265,12 +392,41 @@ class HoldemState:
         return HoldemState(**values)
 
 
-def fresh_holdem_state(rng: random.Random | None = None) -> HoldemState:
-    rng = rng or random.Random()
-    cards = deck()
-    rng.shuffle(cards)
-    hole_cards = ((cards[0], cards[2]), (cards[1], cards[3]))
-    return HoldemState(deck_cards=tuple(cards[4:]), hole_cards=hole_cards)
+def fresh_holdem_state(
+    rng: random.Random | None = None,
+    *,
+    seed: int | None = None,
+    starting_stack: int = STARTING_STACK,
+    button: int = 0,
+    shuffle_algorithm: ShuffleAlgorithm = "python",
+) -> HoldemState:
+    cards = shuffled_deck(seed=seed, rng=rng, algorithm=shuffle_algorithm)
+    small_blind_player = button
+    big_blind_player = 1 - button
+    hole_cards: list[list[Card]] = [[], []]
+    hole_cards[small_blind_player].append(cards[0])
+    hole_cards[big_blind_player].append(cards[1])
+    hole_cards[small_blind_player].append(cards[2])
+    hole_cards[big_blind_player].append(cards[3])
+
+    stacks = [starting_stack, starting_stack]
+    contributions = [0, 0]
+    street_bets = [0, 0]
+    for player, blind in ((small_blind_player, SMALL_BLIND), (big_blind_player, BIG_BLIND)):
+        posted = min(stacks[player], blind)
+        stacks[player] -= posted
+        contributions[player] += posted
+        street_bets[player] += posted
+
+    return HoldemState(
+        deck_cards=tuple(cards[4:]),
+        hole_cards=((hole_cards[0][0], hole_cards[0][1]), (hole_cards[1][0], hole_cards[1][1])),
+        button=button,
+        current_player=small_blind_player,
+        stacks=tuple(stacks),
+        contributions=tuple(contributions),
+        street_bets=tuple(street_bets),
+    )
 
 
 def heuristic_action(state: HoldemState, player: int, rng: random.Random) -> Action:
@@ -283,9 +439,13 @@ def heuristic_action(state: HoldemState, player: int, rng: random.Random) -> Act
     if to_call == 0:
         if "bet" in legal and strength + aggression > 0.62:
             return "bet"
+        if "all-in" in legal and strength > 0.96 and rng.random() < 0.05:
+            return "all-in"
         return "check"
     if "raise" in legal and strength > 0.82 and rng.random() < 0.45:
         return "raise"
+    if "all-in" in legal and strength > 0.95 and rng.random() < 0.15:
+        return "all-in"
     if "call" in legal and (strength >= pot_odds + 0.18 or strength > 0.55):
         return "call"
     return "fold" if "fold" in legal else legal[0]

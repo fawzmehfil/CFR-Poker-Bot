@@ -16,3 +16,7 @@ path = "src/bin/bench.rs"
 [[bin]]
 name = "train_cfr"
 path = "src/bin/train_cfr.rs"
+
+[[bin]]
+name = "holdem_bench"
+path = "src/bin/holdem_bench.rs"

@@ -1,0 +1,80 @@
+{
+  "static": {
+    "deck_52_unique": true,
+    "wheel_straight_score": [
+      4,
+      [
+        5
+      ]
+    ],
+    "royal_flush_score": [
+      8,
+      [
+        14
+      ]
+    ],
+    "evaluator_order_sample": true
+  },
+  "trace_equivalence": {
+    "seed": 17,
+    "cards": "5c,5h,9d,Js,Kh,Ks,2c,3d,9c",
+    "actions": [
+      "call",
+      "check",
+      "check",
+      "check",
+      "check",
+      "check",
+      "check",
+      "check"
+    ],
+    "passed": true,
+    "python_trace": "street=showdown;current=0;board=Kh Ks 2c 3d 9c;stacks=[98, 98];contributions=[2, 2];terminal=true;history=preflop:p0:call:1,preflop:p1:check:0,flop:p1:check:0,flop:p0:check:0,turn:p1:check:0,turn:p0:check:0,river:p1:check:0,river:p0:check:0;legal=;u0=2",
+    "rust_trace": "street=showdown;current=0;board=Kh Ks 2c 3d 9c;stacks=[98, 98];contributions=[2, 2];terminal=true;history=preflop:p0:call:1,preflop:p1:check:0,flop:p1:check:0,flop:p0:check:0,turn:p1:check:0,turn:p0:check:0,river:p1:check:0,river:p0:check:0;legal=;u0=2",
+    "rust_command": {
+      "command": "cargo run --quiet --bin holdem_bench -- --trace 5c,5h,9d,Js,Kh,Ks,2c,3d,9c call,check,check,check,check,check,check,check",
+      "cwd": "engine",
+      "returncode": 0,
+      "stdout": "street=showdown;current=0;board=Kh Ks 2c 3d 9c;stacks=[98, 98];contributions=[2, 2];terminal=true;history=preflop:p0:call:1,preflop:p1:check:0,flop:p1:check:0,flop:p0:check:0,turn:p1:check:0,turn:p0:check:0,river:p1:check:0,river:p0:check:0;legal=;u0=2",
+      "stderr": ""
+    }
+  },
+  "seed_trace_equivalence": {
+    "seed": 17,
+    "actions": [
+      "call",
+      "check",
+      "check",
+      "check",
+      "check",
+      "check",
+      "check",
+      "check"
+    ],
+    "passed": true,
+    "python_trace": "street=showdown;current=0;board=3s 7h Ts Ah Qh;stacks=[98, 98];contributions=[2, 2];terminal=true;history=preflop:p0:call:1,preflop:p1:check:0,flop:p1:check:0,flop:p0:check:0,turn:p1:check:0,turn:p0:check:0,river:p1:check:0,river:p0:check:0;legal=;u0=-2",
+    "rust_trace": "street=showdown;current=0;board=3s 7h Ts Ah Qh;stacks=[98, 98];contributions=[2, 2];terminal=true;history=preflop:p0:call:1,preflop:p1:check:0,flop:p1:check:0,flop:p0:check:0,turn:p1:check:0,turn:p0:check:0,river:p1:check:0,river:p0:check:0;legal=;u0=-2",
+    "rust_command": {
+      "command": "cargo run --quiet --bin holdem_bench -- --seed-trace 17 call,check,check,check,check,check,check,check",
+      "cwd": "engine",
+      "returncode": 0,
+      "stdout": "street=showdown;current=0;board=3s 7h Ts Ah Qh;stacks=[98, 98];contributions=[2, 2];terminal=true;history=preflop:p0:call:1,preflop:p1:check:0,flop:p1:check:0,flop:p0:check:0,turn:p1:check:0,turn:p0:check:0,river:p1:check:0,river:p0:check:0;legal=;u0=-2",
+      "stderr": ""
+    }
+  },
+  "pytest": {
+    "command": "/Users/fawzmehfil/Desktop/CFR-Poker-Bot/.venv/bin/python -m pytest tests/test_holdem.py tests/test_holdem_rust_equivalence.py -q",
+    "cwd": ".",
+    "returncode": 0,
+    "stdout": ".................                                                        [100%]\n17 passed in 1.17s",
+    "stderr": ""
+  },
+  "cargo_test": {
+    "command": "cargo test",
+    "cwd": "engine",
+    "returncode": 0,
+    "stdout": "running 11 tests\ntest holdem::tests::call_check_advances_to_flop_with_big_blind_first ... ok\ntest holdem::tests::deck_has_52_unique_cards ... ok\ntest tests::check_check_advances_round ... ok\ntest holdem::tests::seeded_deals_and_button_one_blinds_are_deterministic ... ok\ntest tests::info_set_key_hides_opponent_card ... ok\ntest tests::bet_fold_terminal ... ok\ntest tests::bet_call_advances_round ... ok\ntest tests::showdown_pair_beats_high_card ... ok\ntest holdem::tests::evaluator_orders_categories_and_wheel ... ok\ntest tests::initial_legal_actions ... ok\ntest holdem::tests::all_in_call_runs_out_to_showdown ... ok\n\ntest result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+    "stderr": "Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s\n     Running unittests src/lib.rs (target/debug/deps/leduc_engine-7e2db114bb78dcab)\n     Running unittests src/bin/bench.rs (target/debug/deps/bench-6d96df0423e7d48f)\n     Running unittests src/bin/holdem_bench.rs (target/debug/deps/holdem_bench-3f485ca2f0fce0fd)\n     Running unittests src/bin/train_cfr.rs (target/debug/deps/train_cfr-7e3d3a1eb4b4d2c9)\n   Doc-tests leduc_engine"
+  },
+  "passed": true
+}

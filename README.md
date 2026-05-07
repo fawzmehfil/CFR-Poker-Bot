@@ -4,7 +4,7 @@
   <img src="assets/cfr_poker_logo.png" alt="cfr_poker_logo" width="220" />
 </div>
 
-Tabular Counterfactual Regret Minimization for Leduc Poker with neural policy approximation, FastAPI/React gameplay, and high-performance Rust simulation/training.
+Tabular Counterfactual Regret Minimization for Leduc Poker with neural policy approximation, FastAPI/React gameplay, high-performance Rust simulation/training, and a separate heads-up Texas Hold'em engine core.
 
 ## Overview
 
@@ -13,6 +13,8 @@ Poker is an imperfect-information game: players must act under hidden informatio
 This project implements a complete research-engineering stack around **Leduc Poker**, a compact benchmark game commonly used for studying imperfect-information algorithms. Leduc is small enough for tabular methods and exhaustive game-tree evaluation, but still contains the essential poker structure: private cards, a public card, betting rounds, folds, showdowns, information sets, and mixed strategies.
 
 The core solver uses **Counterfactual Regret Minimization (CFR/CFR+)** to learn average strategies over information sets. Around that solver, the repo includes evaluation tooling, a PyTorch policy imitation model, a playable FastAPI + React app, and a Rust engine that supports both high-throughput simulation benchmarks and full CFR traversal for Leduc.
+
+The repository also includes a heads-up Texas Hold'em engine in Python and Rust. That Hold'em work is engine support only: it provides deterministic dealing, legal betting transitions, all-in runout, showdown evaluation, and benchmarks, but it is not yet a strong Hold'em AI or a solved strategy.
 
 ## Architecture
 
@@ -53,6 +55,8 @@ Main components:
 - `backend`: FastAPI service for playable bot sessions with random, heuristic, CFR, and neural modes.
 - `frontend`: React UI for Play vs Bot.
 - `engine`: Rust Leduc engine, benchmark binary, and full CFR traversal trainer. The Python trainer remains available as a fallback and comparison implementation.
+- `leduc_cfr/holdem`: Python heads-up Texas Hold'em engine with 52-card deck, seeded deals, betting state, all-in handling, 7-card evaluation, and public views for API use.
+- `engine::holdem`: Rust heads-up Texas Hold'em engine with matching state transitions, evaluator tests, trace comparison, and benchmark binary.
 
 ## Core Algorithms
 
@@ -125,6 +129,27 @@ The numbers below are from the current generated artifacts in `data/`. Exact met
 | Rust state transitions/sec | ~145M |
 | Correctness comparison | Passed against Python trace |
 
+### Texas Hold'em Engine
+
+This is a clean game-engine layer for future CFR, Monte Carlo equity, and search work. It is deliberately not presented as a strong Hold'em bot.
+
+Implemented behavior:
+
+- 52-card card/deck representation with deterministic seeded shuffles.
+- Heads-up button, small blind, big blind, preflop, flop, turn, river, and showdown progression.
+- Legal fold/check/call/bet/raise/all-in actions over a discrete betting abstraction.
+- Pot, stacks, contributions, terminal folds, all-in board runout, showdown, final stacks, utility, and hand history.
+- 7-card hand evaluator covering high card through straight flush with tie-breaking.
+- Python/Rust trace equivalence for explicit seeded Python hands and shared LCG seed-to-deal hands passed by `scripts/verify_holdem_engine.py`.
+
+Sample benchmark from `data/holdem_benchmark.json` on this machine with `--hands 2000 --seed 7`:
+
+| Metric | Python | Rust |
+|---|---:|---:|
+| Random hands/sec | 6,761 | 131,486 |
+| State transitions/sec | 18,634 | 2,139,985 |
+| Showdown evaluations/sec | 7,454 | 237,505 |
+
 ## Benchmark Summary
 
 The CFR strategy has learned useful poker behavior in Leduc: it strongly outperforms a random policy by average utility, while performance against the heuristic baseline is positive but noisy. The nash-gap value is best interpreted as a convergence diagnostic rather than exact exploitability.
@@ -150,6 +175,7 @@ npm install --prefix frontend
 
 ```bash
 .venv/bin/python -m pytest
+cd engine && cargo test
 ```
 
 ### Train CFR
@@ -198,6 +224,33 @@ data/rust_benchmark.json
 data/performance_summary.md
 ```
 
+### Texas Hold'em Engine Commands
+
+Simulate deterministic hands:
+
+```bash
+.venv/bin/python scripts/simulate_holdem.py --hands 5 --seed 7 --policy heuristic
+```
+
+Benchmark Python and Rust Hold'em engines:
+
+```bash
+.venv/bin/python scripts/benchmark_holdem.py --hands 2000 --seed 7
+```
+
+Verify evaluator invariants, Python tests, Rust tests, and Python/Rust trace equivalence:
+
+```bash
+.venv/bin/python scripts/verify_holdem_engine.py --seed 17
+```
+
+Run the Rust Hold'em benchmark directly:
+
+```bash
+cd engine
+cargo run --release --bin holdem_bench -- 10000 7
+```
+
 ### Run the App
 
 Terminal 1:
@@ -236,18 +289,24 @@ data/performance_summary.md
 backend/
   main.py                    FastAPI game service
 engine/
-  src/lib.rs                 Rust Leduc engine
+  src/lib.rs                 Rust Leduc engine and Hold'em module export
+  src/holdem.rs              Rust heads-up Texas Hold'em engine
   src/bin/bench.rs           Rust benchmark and Python comparison
+  src/bin/holdem_bench.rs    Rust Hold'em benchmark and trace binary
   src/bin/train_cfr.rs       Rust CFR traversal trainer
 frontend/
   src/App.jsx                React Play vs Bot UI
   src/styles.css             UI styling
 leduc_cfr/
+  holdem/engine.py           Python heads-up Texas Hold'em engine
   poker/leduc.py             Python Leduc engine
   cfr/trainer.py             CFR/CFR+ solver
   eval/metrics.py            Evaluation and matchup metrics
   neural/policy.py           PyTorch policy approximation
 scripts/
+  simulate_holdem.py         Hold'em simulation CLI
+  benchmark_holdem.py        Python/Rust Hold'em benchmark CLI
+  verify_holdem_engine.py    Hold'em verifier and trace equivalence CLI
   train_cfr.py               CFR training and checkpoint selection
   train_policy.py            Neural imitation training
   evaluate.py                Evaluation and plots
@@ -257,6 +316,8 @@ tests/
   test_eval.py               Evaluation tests
   test_policy.py             Neural dataset/training tests
   test_backend.py            API smoke tests
+  test_holdem.py             Python Hold'em engine tests
+  test_holdem_rust_equivalence.py Python/Rust Hold'em trace comparison
 data/
   *.json, *.png, *.pt        Generated metrics, plots, and models
 ```
@@ -267,13 +328,15 @@ data/
 - **Tabular CFR first:** A correct tabular baseline is easier to verify and provides a reliable target for neural approximation.
 - **Neural as imitation:** The PyTorch model compresses the CFR average strategy into a learned policy. It is measured against CFR and not presented as independently superior.
 - **Rust as a performance layer:** Rust now handles standalone simulation benchmarks and full Leduc CFR traversal. Python remains the orchestration and fallback layer.
+- **Hold'em engine support, not Hold'em CFR:** The Hold'em implementation focuses on correct deterministic state transitions and evaluation. It intentionally uses a bounded action abstraction suitable for future search/CFR experiments instead of claiming no-limit strategic strength.
 - **Optional Rust evaluation acceleration:** Evaluation can call the Rust benchmark path for random rollout throughput and correctness validation. Python remains the fallback and the default-safe execution path.
 - **Selection is explicit:** Best-gap selection optimizes the convergence proxy; heuristic and balanced modes are available when exploitative matchup performance is the priority.
 - **Proxy metrics are labeled:** The nash-gap upper bound is a diagnostic using full-information best response, not exact exploitability.
 
 ## Limitations
 
-- The solved game is Leduc Poker, not full Texas Hold'em.
+- The solved game is Leduc Poker. The Texas Hold'em code is engine support and benchmark infrastructure, not a solved Hold'em strategy.
+- The Hold'em betting model exposes a discrete bet/raise abstraction plus all-in support; it is not a complete live no-limit sizing tree.
 - The exploitability-style metric is a proxy, not a mathematically exact exploitability computation.
 - The neural policy is supervised imitation of CFR, not reinforcement learning from self-play.
 - Rust CFR traversal is standalone and file-based; it is not yet exposed as an in-process Python extension.
@@ -285,7 +348,8 @@ data/
 - Add exact imperfect-information exploitability or stronger best-response tooling.
 - Scale evaluation with larger multi-seed matchup matrices.
 - Improve neural architectures and validation protocols.
-- Add a separate heads-up Texas Hold'em playable demo without attempting full CFR over Hold'em.
+- Build CFR/search/equity layers on top of the Hold'em engine.
+- Add a stronger heads-up Texas Hold'em playable demo without implying solved no-limit play.
 
 ## Resume Bullets
 

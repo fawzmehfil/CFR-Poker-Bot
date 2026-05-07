@@ -1,0 +1,19 @@
+{
+  "seed": 7,
+  "python": {
+    "hands": 2000,
+    "random_hands_per_sec": 6761.208075698438,
+    "state_transitions_per_sec": 18633.889456624896,
+    "showdown_evaluations_per_sec": 7454.476270967295,
+    "avg_utility_p0": -1.603,
+    "avg_transitions_per_hand": 2.756
+  },
+  "rust": {
+    "available": true,
+    "hands": 10000,
+    "seed": 7,
+    "random_hands_per_sec": 131485.96,
+    "state_transitions_per_sec": 2139984.71,
+    "showdown_evaluations_per_sec": 237504.79
+  }
+}

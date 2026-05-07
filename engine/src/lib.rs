@@ -1,5 +1,7 @@
 use std::fmt;
 
+pub mod holdem;
+
 pub const ANTE: i32 = 1;
 pub const BET_SIZES: [i32; 2] = [2, 4];
 pub const MAX_RAISES: u8 = 2;
