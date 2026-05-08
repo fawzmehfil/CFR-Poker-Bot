@@ -23,6 +23,21 @@ def test_backend_supports_bot_mode_selection():
     assert game.json()["bot_mode"] == "heuristic"
 
 
+def test_backend_allows_vite_fallback_dev_port_cors():
+    client = TestClient(app)
+
+    response = client.options(
+        "/api/holdem/new-game",
+        headers={
+            "Origin": "http://localhost:5174",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5174"
+
+
 def test_holdem_backend_rejects_illegal_action_cleanly():
     client = TestClient(app)
     game = client.post("/api/holdem/new-game").json()
