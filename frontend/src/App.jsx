@@ -82,6 +82,20 @@ function Chips({ amount, muted = false, large = false }) {
   );
 }
 
+function PotColumn({ pot = 0, toCall = 0 }) {
+  return (
+    <div className="potColumn sidePot">
+      <span className="metricLabel">Pot</span>
+      <div key={pot} className="potEmphasis">
+        <Chips amount={pot} large />
+      </div>
+      <div className="toCall">
+        To call <strong>{toCall}</strong>
+      </div>
+    </div>
+  );
+}
+
 function ActionIcon({ action }) {
   const normalized = action === "f" ? "fold" : action === "k" ? "check" : action === "r" ? "raise" : action;
   const Icon =
@@ -340,7 +354,7 @@ function App() {
                 Texas Hold'em
               </button>
             </div>
-            <button className="iconButton" title="New hand" onClick={() => newGame()} disabled={loading}>
+            <button className="iconButton newHandButton" title="New hand" onClick={() => newGame()} disabled={loading}>
               {phase === "dealing" ? <Loader2 size={20} className="spin" /> : <RotateCcw size={20} />}
             </button>
           </div>
@@ -348,10 +362,6 @@ function App() {
 
         <div className={`felt ${mode === "holdem" ? "holdemFelt" : "leducFelt"}`}>
           <div className="feltRail" />
-          <div className="feltLogo">
-            <Spade size={44} />
-            <span>CFR Poker</span>
-          </div>
 
           {chipBurst && (
             <div key={chipBurst.id} className={`chipMover ${chipBurst.actor === "You" ? "fromHero" : "fromBot"}`}>
@@ -383,21 +393,29 @@ function App() {
               />
 
               <div className="tableCenter holdemBoard">
-                <div className="streetPill">
-                  <span>{street}</span>
-                  {phase === "reveal" ? <Sparkles size={14} aria-hidden="true" /> : null}
-                </div>
-                <div className="potColumn">
-                  <span className="metricLabel">Pot</span>
-                  <div key={game?.pot ?? 0} className="potEmphasis">
-                    <Chips amount={game?.pot ?? 0} large />
+                <div className="centerTopline">
+                  <div className="streetPill">
+                    <span>{street}</span>
+                    {phase === "reveal" ? <Sparkles size={14} aria-hidden="true" /> : null}
                   </div>
-                  <div className="toCall">
-                    To call <strong>{game?.to_call ?? 0}</strong>
+                  <div className={`status ${game?.terminal ? "complete" : ""} ${isBotThinking ? "thinking" : ""}`}>
+                    {status}
                   </div>
                 </div>
-                <div className={`status ${game?.terminal ? "complete" : ""} ${isBotThinking ? "thinking" : ""}`}>
-                  {status}
+                <div className="boardZone">
+                  <div className="boardRail">
+                    <div className="cardsRow boardCards" aria-label="Board cards">
+                      {boardPlan.map((card, index) => (
+                        <Card
+                          key={`${index}-${card.label || "empty"}`}
+                          label={card.label}
+                          placeholder="Board"
+                          revealDelay={card.delayMs}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <PotColumn pot={game?.pot ?? 0} toCall={game?.to_call ?? 0} />
                 </div>
                 {showdown && (
                   <div className={`showdownPanel ${showdown.tone}`}>
@@ -406,16 +424,6 @@ function App() {
                     <span>{showdown.outcome}</span>
                   </div>
                 )}
-                <div className="cardsRow boardCards" aria-label="Board cards">
-                  {boardPlan.map((card, index) => (
-                    <Card
-                      key={`${index}-${card.label || "empty"}`}
-                      label={card.label}
-                      placeholder="Board"
-                      revealDelay={card.delayMs}
-                    />
-                  ))}
-                </div>
               </div>
 
               <PlayerSeat
@@ -442,23 +450,21 @@ function App() {
               />
 
               <div className="tableCenter leducBoard">
-                <div className="streetPill">
-                  <span>{street}</span>
-                </div>
-                <div className="potColumn">
-                  <span className="metricLabel">Pot</span>
-                  <div key={game?.pot ?? 0} className="potEmphasis">
-                    <Chips amount={game?.pot ?? 0} large />
+                <div className="centerTopline">
+                  <div className="streetPill">
+                    <span>{street}</span>
                   </div>
-                  <div className="toCall">
-                    To call <strong>{game?.to_call ?? 0}</strong>
+                  <div className={`status ${game?.terminal ? "complete" : ""} ${isBotThinking ? "thinking" : ""}`}>
+                    {status}
                   </div>
                 </div>
-                <div className={`status ${game?.terminal ? "complete" : ""} ${isBotThinking ? "thinking" : ""}`}>
-                  {status}
-                </div>
-                <div className="cardsRow boardCards">
-                  <Card label={game?.public_card || ""} placeholder="Public" revealDelay={120} />
+                <div className="boardZone">
+                  <div className="boardRail">
+                    <div className="cardsRow boardCards">
+                      <Card label={game?.public_card || ""} placeholder="Public" revealDelay={120} />
+                    </div>
+                  </div>
+                  <PotColumn pot={game?.pot ?? 0} toCall={game?.to_call ?? 0} />
                 </div>
               </div>
 
@@ -492,21 +498,25 @@ function App() {
             <div className="controls">
               {(game?.legal_actions || []).map((action) => {
                 const amount = getImmediateAmount(mode, game, action);
+                const label = actionLabel(mode, action);
                 return (
                   <button
                     key={action}
                     className={`actionButton ${actionTone(action)}`}
                     onClick={() => act(action)}
                     disabled={loading || game?.terminal}
+                    aria-label={amount ? `${label} ${amount} chips` : label}
                   >
                     <ActionIcon action={action} />
-                    <span>{actionLabel(mode, action)}</span>
-                    {amount ? <small>{amount}</small> : null}
+                    <span className="actionText">
+                      <span className="actionLabel">{label}</span>
+                      {amount ? <span className="buttonAmount">{amount}</span> : null}
+                    </span>
                   </button>
                 );
               })}
               {game?.terminal && (
-                <button className="primary" onClick={() => newGame()} disabled={loading}>
+                <button className="primary newHandButton" onClick={() => newGame()} disabled={loading}>
                   <RotateCcw size={18} aria-hidden="true" />
                   New Hand
                 </button>
