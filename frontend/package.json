@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "test:ui": "node --test tests/ui-contract.test.mjs",
+    "test:ui": "node --test tests/*.test.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
